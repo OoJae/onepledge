@@ -16,3 +16,5 @@ onepledge-private-state*/
 web/dist/
 deployments/undeployed.json
 cli/midnight-level-db/
+docs/video/voice/
+docs/video/build/
