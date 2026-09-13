@@ -89,7 +89,8 @@ export const configureProviders = async (ctx: WalletContext, network: NetworkCon
   const zkConfigProvider = new NodeZkConfigProvider<RegistryCircuits>(zkConfigPath);
   return {
     privateStateProvider: levelPrivateStateProvider<PartyId, OnePledgePrivateState>({
-      privateStateStoreName: path.join(repoRoot, '.secrets', `${network.name}-private-state`),
+      // A level sublevel name: printable ASCII, no spaces or paths. The DB lives in ./midnight-level-db (git-ignored).
+      privateStateStoreName: `onepledge-private-state-${network.name}`,
       privateStoragePasswordProvider: () => storagePassword(network),
       accountId: unshieldedAddress(ctx),
     }),

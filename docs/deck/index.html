@@ -1,0 +1,176 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8" />
+<title>OnePledge · Wave 1</title>
+<style>
+  @page { size: 1600px 900px; margin: 0; }
+  :root {
+    --paper: #f6f4ef; --card: #fffdf8; --ink: #15171a; --soft: #4b4f57; --muted: #7a7f88;
+    --rule: #e2ded4; --accent: #1f5e46; --accent-soft: #e3efe8; --danger: #a3302a; --danger-soft: #f6e4e1;
+    --mono: ui-monospace, 'SF Mono', Menlo, Consolas, monospace;
+    --sans: 'Inter', ui-sans-serif, system-ui, -apple-system, 'Segoe UI', sans-serif;
+  }
+  * { box-sizing: border-box; }
+  html, body { margin: 0; background: #d9d5cc; font-family: var(--sans); color: var(--ink); -webkit-font-smoothing: antialiased; }
+  .slide {
+    width: 1600px; height: 900px; background: var(--paper); position: relative; overflow: hidden;
+    padding: 84px 104px; margin: 0 auto 24px; page-break-after: always; break-after: page;
+    display: flex; flex-direction: column;
+  }
+  @media print { html, body { background: var(--paper); } .slide { margin: 0; } }
+  .kicker { color: var(--accent); font-weight: 700; font-size: 22px; letter-spacing: .02em; margin: 0 0 20px; }
+  h1 { font-size: 88px; line-height: 1.02; letter-spacing: -.03em; margin: 0 0 28px; }
+  h2 { font-size: 60px; line-height: 1.06; letter-spacing: -.025em; margin: 0 0 36px; max-width: 1250px; }
+  h3 { font-size: 28px; margin: 0 0 10px; letter-spacing: -.01em; }
+  p, li { font-size: 26px; line-height: 1.45; color: var(--soft); }
+  .lede { font-size: 32px; max-width: 1150px; margin: 0; }
+  .mono { font-family: var(--mono); }
+  .footer { position: absolute; left: 104px; right: 104px; bottom: 40px; display: flex; justify-content: space-between; color: var(--muted); font-size: 18px; }
+  .brand { display: inline-flex; align-items: center; gap: 14px; font-weight: 700; font-size: 30px; color: var(--ink); }
+  .mark { width: 44px; height: 44px; border-radius: 9px; background: var(--ink); color: var(--paper); display: grid; place-items: center; font-family: var(--mono); font-size: 24px; }
+  .grid2 { display: grid; grid-template-columns: 1fr 1fr; gap: 28px; }
+  .grid3 { display: grid; grid-template-columns: repeat(3, 1fr); gap: 24px; }
+  .card { background: var(--card); border: 1px solid var(--rule); border-radius: 16px; padding: 32px; }
+  .card p, .card li { font-size: 23px; margin: 0; }
+  .bad { border-color: #e7c9c5; }
+  .bad h3 { color: var(--danger); }
+  .good h3 { color: var(--accent); }
+  .flow { display: grid; grid-template-columns: repeat(4, 1fr); gap: 18px; align-items: stretch; }
+  .step { background: var(--card); border: 1px solid var(--rule); border-radius: 16px; padding: 26px; position: relative; }
+  .step .n { font-family: var(--mono); color: var(--accent); font-weight: 700; font-size: 20px; }
+  .step p { font-size: 22px; margin: 8px 0 0; }
+  table { border-collapse: collapse; width: 100%; font-size: 23px; }
+  th, td { text-align: left; padding: 16px 18px; border-bottom: 1px solid var(--rule); vertical-align: top; }
+  th { color: var(--muted); font-size: 17px; text-transform: uppercase; letter-spacing: .06em; }
+  td:first-child { font-weight: 700; color: var(--ink); white-space: nowrap; }
+  .pill { display: inline-block; padding: 4px 12px; border-radius: 6px; font-size: 18px; font-weight: 700; }
+  .yes { background: var(--accent-soft); color: var(--accent); }
+  .no { background: var(--danger-soft); color: var(--danger); }
+  .stat { font-size: 64px; font-weight: 800; letter-spacing: -.03em; color: var(--ink); line-height: 1; }
+  .statlabel { font-size: 20px; color: var(--muted); margin-top: 8px; }
+  ul.tight { margin: 0; padding-left: 26px; }
+  ul.tight li { margin-bottom: 8px; }
+  .chip { display: inline-block; font-family: var(--mono); font-size: 19px; background: var(--card); border: 1px solid var(--rule); border-radius: 8px; padding: 6px 12px; margin: 0 8px 8px 0; color: var(--ink); }
+</style>
+</head>
+<body>
+
+<!-- 1 -->
+<section class="slide">
+  <div class="brand"><span class="mark">1</span>OnePledge</div>
+  <div style="margin-top:auto;margin-bottom:auto">
+    <p class="kicker">Midnight Buildathon · Wave 1</p>
+    <h1>One pledge per invoice.<br/>No lender sees another's book.</h1>
+    <p class="lede">A registry on Midnight that refuses to let the same receivable be financed twice, while each lender sees only its own deals.</p>
+  </div>
+  <div class="footer"><span>github.com/OoJae/onepledge</span><span>Apache-2.0 · Compact 0.31.1</span></div>
+</section>
+
+<!-- 2 -->
+<section class="slide">
+  <p class="kicker">The problem</p>
+  <h2>The same invoice, pledged to two lenders. Both pay out.</h2>
+  <div class="grid3">
+    <div class="card">
+      <h3>Lenders can't compare notes</h3>
+      <p>Catching a double pledge means pooling books. A lender's clients and pricing are its business, so nobody shares.</p>
+    </div>
+    <div class="card bad">
+      <h3>Hash registry: bypassed</h3>
+      <p><span class="mono">FV/2026/09/0412</span> and <span class="mono">FV-2026-09-0412</span> hash differently. Each bank's spelling is a "new" invoice.</p>
+    </div>
+    <div class="card bad">
+      <h3>Hash registry: leaks</h3>
+      <p>Anyone holding an invoice hashes it and learns from the public chain whether, and when, it was financed.</p>
+    </div>
+  </div>
+  <div class="footer"><span>OnePledge</span><span>2</span></div>
+</section>
+
+<!-- 3 -->
+<section class="slide">
+  <p class="kicker">How it works</p>
+  <h2>A canonical ID, a keyed tag, and a proof checked on Midnight.</h2>
+  <div class="flow">
+    <div class="step"><div class="n">01 · IDENTITY</div><h3>KSeF number</h3><p>Poland's national e-invoicing system assigns every B2B invoice one 35-character number with a CRC-8. One spelling only.</p></div>
+    <div class="step"><div class="n">02 · TAG</div><h3>Keyed, not guessable</h3><p>The tag authority computes <span class="mono">HMAC(key, number)</span> and signs it with the borrower's key and an invoice commitment.</p></div>
+    <div class="step"><div class="n">03 · PROOF</div><h3>Checked in-circuit</h3><p>The borrower proves the signature, the acceptance window and that the lender is admitted, all in zero knowledge.</p></div>
+    <div class="step"><div class="n">04 · LEDGER</div><h3>Tag set rejects repeats</h3><p>The tag goes into a public set forever. The second pledge can't produce a valid proof.</p></div>
+  </div>
+  <p style="margin-top:36px">
+    <span class="chip">in-circuit Jubjub Schnorr</span><span class="chip">Set&lt;Bytes&lt;32&gt;&gt;</span><span class="chip">HistoricMerkleTree</span><span class="chip">witness secrets, no ownPublicKey()</span><span class="chip">release nullifiers</span>
+  </p>
+  <div class="footer"><span>OnePledge</span><span>3</span></div>
+</section>
+
+<!-- 4 -->
+<section class="slide">
+  <p class="kicker">Selective disclosure</p>
+  <h2>Everyone learns exactly what they need.</h2>
+  <div class="card" style="padding:12px 28px">
+    <table>
+      <tr><th>Party</th><th>Learns</th><th>Never learns</th></tr>
+      <tr><td>Financing lender</td><td><span class="pill yes">full invoice</span> checked against the signed commitment</td><td>Other lenders' deals</td></tr>
+      <tr><td>Rival lender</td><td><span class="pill yes">"already pledged"</span></td><td>By whom, how much, which terms</td></tr>
+      <tr><td>Public chain</td><td>Opaque tag, note commitment, counts</td><td><span class="pill no">invoice, amount, borrower, lender</span></td></tr>
+      <tr><td>Tag authority</td><td>Which invoices it attested</td><td>Which lender financed them</td></tr>
+    </table>
+  </div>
+  <p style="margin-top:24px">Pinned by privacy-leak tests that search the full public state and every circuit transcript for each private value.</p>
+  <div class="footer"><span>OnePledge</span><span>4</span></div>
+</section>
+
+<!-- 5 -->
+<section class="slide">
+  <p class="kicker">Wave 1 · shipped</p>
+  <h2>A working registry, tested like it handles money.</h2>
+  <div class="grid3" style="margin-bottom:28px">
+    <div class="card"><div class="stat">4</div><div class="statlabel">circuits compiled with proving keys</div></div>
+    <div class="card"><div class="stat">95</div><div class="statlabel">tests: adversarial witnesses, forgery, privacy leaks</div></div>
+    <div class="card"><div class="stat">3</div><div class="statlabel">surfaces: web demo on real circuits, CLI, live indexer reader</div></div>
+  </div>
+  <div class="grid2">
+    <div class="card good">
+      <h3>Proven</h3>
+      <ul class="tight">
+        <li>Five double-pledge variants rejected</li>
+        <li>Ten forgery attempts rejected, including a malicious prover</li>
+        <li>Stolen attestations can't be used by anyone else</li>
+      </ul>
+    </div>
+    <div class="card">
+      <h3>Honest limits</h3>
+      <ul class="tight">
+        <li>Single tag authority (threshold in Wave 3)</li>
+        <li>Synthetic KSeF numbers until the test-environment adapter</li>
+        <li>Facilities, draws and Lace UI are Wave 2</li>
+      </ul>
+    </div>
+  </div>
+  <div class="footer"><span>OnePledge</span><span>5</span></div>
+</section>
+
+<!-- 6 -->
+<section class="slide">
+  <p class="kicker">Market and roadmap</p>
+  <h2>Start where every invoice already has one ID.</h2>
+  <div class="grid2">
+    <div class="card">
+      <h3>Beachhead: factoring on KSeF</h3>
+      <p>Mandatory national e-invoicing gives every Polish B2B invoice a canonical number. Buyers: factors, supply-chain-finance banks, private-credit funds. Distribution: e-invoicing access points that already connect everyone.</p>
+      <p style="margin-top:16px">Useful with just two lenders. No consortium needed.</p>
+    </div>
+    <div class="card">
+      <h3>Next</h3>
+      <ul class="tight">
+        <li><b>Wave 2:</b> Lace-connected borrower desk and lender inbox on Preprod, facilities and borrowing-base draws, encrypted invoice delivery, KSeF test-environment adapter, practitioner interviews</li>
+        <li><b>Wave 3:</b> threshold tags (no single party can tag), pledge assignment, reusable uniqueness module for any guessable-ID registry</li>
+      </ul>
+    </div>
+  </div>
+  <div class="footer"><span>github.com/OoJae/onepledge</span><span>6</span></div>
+</section>
+
+</body>
+</html>

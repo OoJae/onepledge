@@ -43,6 +43,8 @@ const ctx = await startWallet(await walletSeed(network), network);
 log('Waiting for wallet sync...');
 await ctx.wallet.waitForSyncedState();
 const providers: RegistryProviders = await configureProviders(ctx, network);
+// Private state is scoped per contract; bind the store to this deployment before writing to it.
+providers.privateStateProvider.setContractAddress(record.contractAddress);
 
 type TxPublic = { txId: string; blockHeight: number };
 
@@ -123,7 +125,8 @@ try {
 } catch (e) {
   const message = (e as Error).message;
   if (!/already pledged/.test(message)) throw e;
-  note(`Borrower re-pledges ${invoice1} to lender B`, 'pledge', `rejected: ${message.split('\n')[0]}`);
+  const reason = /failed assert: ([^\n]*)/.exec(message)?.[1] ?? message.split('\n')[0];
+  note(`Borrower re-pledges ${invoice1} to lender B`, 'pledge', `rejected before proving: ${reason}`);
 }
 
 // 4. A different invoice to lender B goes through.

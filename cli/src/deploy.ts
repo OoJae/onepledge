@@ -5,7 +5,8 @@ import { deployContract } from '@midnight-ntwrk/midnight-js-contracts';
 import { dayFromIso } from '@onepledge/attester';
 import { selectNetwork } from './config.js';
 import { configureProviders, loadParties, loadTagAuthority, registryContract, writeDeployment } from './providers.js';
-import { balances, saveSnapshot, startWallet, syncSummary, walletSeed } from './wallet.js';
+import * as Rx from 'rxjs';
+import { balances, registerNightForDust, saveSnapshot, startWallet, syncSummary, walletSeed } from './wallet.js';
 
 const network = selectNetwork();
 const log = (m: string) => console.log(`[${new Date().toISOString()}] ${m}`);
@@ -21,9 +22,15 @@ log(syncSummary(state));
 const { night, dust } = balances(state);
 log(`NIGHT=${night} DUST=${dust}`);
 if (dust === 0n) {
-  log('No DUST yet. Keep the wallet daemon running until NIGHT is registered and DUST accrues.');
-  await ctx.wallet.stop();
-  process.exit(1);
+  if (night === 0n) {
+    log('No NIGHT and no DUST. Fund the wallet first (npm run wallet:init prints the address).');
+    await ctx.wallet.stop();
+    process.exit(1);
+  }
+  const txId = await registerNightForDust(ctx);
+  log(txId ? `Registered NIGHT for DUST generation (tx ${txId}). Waiting for DUST...` : 'Waiting for DUST to accrue...');
+  await Rx.firstValueFrom(ctx.wallet.state().pipe(Rx.filter((s) => balances(s).dust > 0n)));
+  log('DUST available.');
 }
 
 const providers = await configureProviders(ctx, network);
