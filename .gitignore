@@ -1,0 +1,16 @@
+node_modules/
+dist/
+logs/
+reports/
+coverage/
+.env
+.env.*
+!.env.example
+# Wallet mnemonics and signer keys. Never commit.
+.secrets/
+*.mnemonic
+# Encrypted private-state stores
+midnight-level-db/
+onepledge-private-state*/
+.DS_Store
+web/dist/

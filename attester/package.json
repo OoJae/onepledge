@@ -1,0 +1,18 @@
+{
+  "name": "@onepledge/attester",
+  "version": "0.1.0",
+  "license": "Apache-2.0",
+  "private": true,
+  "type": "module",
+  "main": "src/index.ts",
+  "types": "src/index.ts",
+  "scripts": {
+    "test": "vitest run",
+    "typecheck": "tsc -p tsconfig.json --noEmit"
+  },
+  "dependencies": {
+    "@onepledge/contract": "*",
+    "@noble/hashes": "^2.0.0",
+    "@midnight-ntwrk/compact-runtime": "0.16.0"
+  }
+}

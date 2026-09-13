@@ -1,0 +1,176 @@
+// SPDX-License-Identifier: Apache-2.0
+// OnePledge Registry, Wave 1 (v0).
+//
+// One pledge per receivable, across rival lenders, without any lender seeing another's book.
+//
+// Trust model for this version (stated, not hidden):
+//   - A single tag authority, fixed at deployment, attests that a KSeF invoice exists and
+//     computes its tag T = PRF(tagSecret, canonical KSeF number) off-chain. Uniqueness per
+//     invoice therefore rests on that authority computing T deterministically. Wave 3 replaces
+//     it with a verifiable threshold tag.
+//   - The attestation is bound to the borrower's key, so a leaked attestation cannot be
+//     front-run by someone else.
+//
+// What the public ledger learns from a pledge: the tag T, an opaque note commitment, the
+// historic lender-registry root used, and the pledge count. It never learns the invoice
+// fields, the amount, the borrower, or which lender financed it.
+
+pragma language_version >= 0.22 && <= 0.23;
+import CompactStandardLibrary;
+import "schnorr" prefix Schnorr_;
+
+export { Schnorr_SchnorrSignature };
+
+// What the tag authority signs. `invoiceCommit` commits to the invoice fields (amount,
+// debtor, due date) with a salt; only the financing lender receives the opening.
+export struct Attestation {
+  tag: Bytes<32>;
+  invoiceCommit: Bytes<32>;
+  acceptanceDay: Uint<32>;
+  borrower: Bytes<32>;
+  signature: Schnorr_SchnorrSignature;
+}
+
+// Domain separator carried in every signed message, so a signature made for another
+// purpose (or another protocol version) can never verify here.
+export pure circuit attestationDomain(): Field {
+  return degradeToTransient(persistentHash<Bytes<32>>(pad(32, "onepledge:attest:v1")));
+}
+
+// Registrar: admits lenders. Identity comes from a witness secret, never ownPublicKey().
+export ledger registrar: Bytes<32>;
+// The single tag authority for this registry version. Rotating it means a new deployment.
+export sealed ledger tagAuthority: JubjubPoint;
+// Acceptance-day window this deployment accepts, in days since 1970-01-01. The day is part of
+// the canonical KSeF number, so two registry versions never accept the same invoice.
+export sealed ledger windowStart: Uint<32>;
+export sealed ledger windowEnd: Uint<32>;
+
+// Admitted lenders, as commitments. A pledge proves membership without revealing which one.
+export ledger lenders: HistoricMerkleTree<10, Bytes<32>>;
+// Every tag ever pledged. Tags are never removed: a released pledge stays "used".
+export ledger tags: Set<Bytes<32>>;
+// Pledge notes: commit to (tag, lender, invoice commitment, salt).
+export ledger notes: HistoricMerkleTree<16, Bytes<32>>;
+// Nullifiers of released notes.
+export ledger releases: Set<Bytes<32>>;
+export ledger pledgeCount: Counter;
+export ledger releaseCount: Counter;
+
+witness localSecretKey(): Bytes<32>;
+witness getAttestation(): Attestation;
+witness getLenderPath(): MerkleTreePath<10, Bytes<32>>;
+witness getNoteSalt(): Bytes<32>;
+witness getNoteOpening(): [Bytes<32>, Bytes<32>, Bytes<32>];
+witness getNotePath(): MerkleTreePath<16, Bytes<32>>;
+
+constructor(authority: JubjubPoint, start: Uint<32>, end: Uint<32>) {
+  assert(start < end, "Empty acceptance window");
+  registrar = disclose(registrarKey(localSecretKey()));
+  tagAuthority = disclose(authority);
+  windowStart = disclose(start);
+  windowEnd = disclose(end);
+}
+
+export pure circuit registrarKey(sk: Bytes<32>): Bytes<32> {
+  return persistentHash<Vector<2, Bytes<32>>>([pad(32, "onepledge:registrar:v1"), sk]);
+}
+
+export pure circuit borrowerKey(sk: Bytes<32>): Bytes<32> {
+  return persistentHash<Vector<2, Bytes<32>>>([pad(32, "onepledge:borrower:v1"), sk]);
+}
+
+export pure circuit lenderKey(sk: Bytes<32>): Bytes<32> {
+  return persistentHash<Vector<2, Bytes<32>>>([pad(32, "onepledge:lender:v1"), sk]);
+}
+
+export pure circuit noteCommitment(tag: Bytes<32>, lender: Bytes<32>, invoiceCommit: Bytes<32>,
+                                   salt: Bytes<32>): Bytes<32> {
+  return persistentHash<Vector<5, Bytes<32>>>([pad(32, "onepledge:note:v1"), tag, lender, invoiceCommit, salt]);
+}
+
+export pure circuit releaseNullifier(note: Bytes<32>, lenderSecret: Bytes<32>): Bytes<32> {
+  return persistentHash<Vector<3, Bytes<32>>>([pad(32, "onepledge:release:v1"), note, lenderSecret]);
+}
+
+// The exact message the tag authority signs.
+export pure circuit attestationMessage(tag: Bytes<32>, invoiceCommit: Bytes<32>, acceptanceDay: Uint<32>,
+                                       borrower: Bytes<32>): Vector<5, Field> {
+  return [
+    attestationDomain(),
+    degradeToTransient(tag),
+    degradeToTransient(invoiceCommit),
+    acceptanceDay as Field,
+    degradeToTransient(borrower)
+  ];
+}
+
+export pure circuit schnorrChallenge(ann_x: Field, ann_y: Field, pk_x: Field, pk_y: Field,
+                                     msg: Vector<5, Field>): Field {
+  return Schnorr_schnorrChallenge5(ann_x, ann_y, pk_x, pk_y, msg);
+}
+
+// Registrar admits a lender by its key commitment (lenderKey(lenderSecret)).
+export circuit admitLender(lender: Bytes<32>): [] {
+  assert(registrar == registrarKey(localSecretKey()), "Only the registrar can admit lenders");
+  lenders.insert(disclose(lender));
+}
+
+export circuit rotateRegistrar(next: Bytes<32>): [] {
+  assert(registrar == registrarKey(localSecretKey()), "Only the registrar can rotate the registrar");
+  registrar = disclose(next);
+}
+
+// Borrower pledges an attested receivable to an admitted lender.
+// Runs with the borrower's secret, the attestation, and the lender's key and registry path
+// (handed over by the lender off-chain). Returns the note commitment.
+export circuit pledge(lender: Bytes<32>): Bytes<32> {
+  const att = getAttestation();
+
+  // 1. The attestation belongs to this borrower (anti-front-running).
+  assert(att.borrower == borrowerKey(localSecretKey()), "Attestation is bound to a different borrower");
+
+  // 2. The tag authority signed exactly these fields.
+  Schnorr_schnorrVerify<5>(
+    attestationMessage(att.tag, att.invoiceCommit, att.acceptanceDay, att.borrower),
+    att.signature,
+    tagAuthority);
+
+  // 3. The invoice falls inside this deployment's acceptance window. Both comparisons are true
+  //    in every successful pledge, so disclosing them reveals nothing beyond "in window".
+  assert(disclose(att.acceptanceDay >= windowStart), "Invoice accepted before this registry's window");
+  assert(disclose(att.acceptanceDay < windowEnd), "Invoice accepted after this registry's window");
+
+  // 4. The lender is admitted, proven against a historic registry root without revealing it.
+  const lenderPath = getLenderPath();
+  assert(lenderPath.leaf == lender, "Lender path does not match the lender");
+  assert(lenders.checkRoot(disclose(merkleTreePathRoot<10, Bytes<32>>(lenderPath))), "Lender is not admitted");
+
+  // 5. One pledge per receivable, forever.
+  const tag = disclose(att.tag);
+  assert(!tags.member(tag), "Receivable already pledged");
+  tags.insert(tag);
+
+  // 6. Record a note only the lender of record can later release.
+  const note = disclose(noteCommitment(att.tag, lender, att.invoiceCommit, getNoteSalt()));
+  notes.insert(note);
+  pledgeCount.increment(1);
+  return note;
+}
+
+// Lender of record releases a pledge (for example, the invoice was paid). The tag stays in
+// `tags`; only an unlinkable nullifier is published.
+export circuit release(): [] {
+  const sk = localSecretKey();
+  const [tag, invoiceCommit, salt] = getNoteOpening();
+  const note = noteCommitment(tag, lenderKey(sk), invoiceCommit, salt);
+
+  const notePath = getNotePath();
+  assert(notePath.leaf == note, "Note path does not match the note opening");
+  assert(notes.checkRoot(disclose(merkleTreePathRoot<16, Bytes<32>>(notePath))), "Unknown pledge note");
+
+  const nullifier = disclose(releaseNullifier(note, sk));
+  assert(!releases.member(nullifier), "Pledge already released");
+  releases.insert(nullifier);
+  releaseCount.increment(1);
+}
