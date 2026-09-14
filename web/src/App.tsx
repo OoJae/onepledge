@@ -62,7 +62,13 @@ export function App() {
         </nav>
       </header>
       <main ref={main}>
-        <Suspense fallback={<p className="muted" role="status">Loading…</p>}>
+        <Suspense
+          fallback={
+            <p className="muted" role="status">
+              Loading the compiled contract and Midnight's ledger runtime (about 5 MB, cached after the first visit)…
+            </p>
+          }
+        >
           <div data-route={route}>
             <Page />
           </div>

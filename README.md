@@ -9,7 +9,7 @@ This project is built on the Midnight Network.
 <!-- links:start -->
 | | |
 |---|---|
-| Live demo | _added at submission_ |
+| Live demo | [onepledge.vercel.app](https://onepledge.vercel.app) (runs the compiled circuits in your browser and reads Preprod) |
 | Demo video | _added at submission_ |
 | Deck | [docs/OnePledge-Wave1-deck.pdf](docs/OnePledge-Wave1-deck.pdf) |
 | Security review | [docs/security-review.md](docs/security-review.md) · [threat model](docs/threat-model.md) |
@@ -165,7 +165,7 @@ deployments/  Public record of deployments (active and archived)
 
 ### 1. Open the live demo
 
-The hosted web app (link at the top) needs no install:
+[onepledge.vercel.app](https://onepledge.vercel.app) needs no install:
 - **The story:** pledge, rejected double pledge and release, running the compiled circuits in your browser.
 - **Why not a hash registry:** both attacks, side by side with OnePledge.
 - **Live registry:** reads the Preprod contract from the public indexer, with a "Check a tag" box.
