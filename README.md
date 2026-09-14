@@ -2,58 +2,120 @@
 
 **One pledge per receivable, across rival lenders, without any lender seeing another's book.**
 
-OnePledge is a registry on [Midnight](https://midnight.network) that refuses to let the same invoice be financed twice. A borrower proves, in zero knowledge, that a tag authority attested an invoice and that the invoice has never been pledged. The public ledger stores only an opaque tag and a commitment. The financing lender learns the invoice, rival lenders learn only "already pledged", and nobody else learns anything.
+OnePledge is a registry on [Midnight](https://midnight.network) that refuses to let the same invoice be financed twice. A borrower proves, in zero knowledge, that the tag authority attested an invoice for this registry and that the invoice has never been pledged. The public ledger stores an opaque tag and a note commitment. The financing lender learns the invoice; a rival lender learns only that it is already pledged; the tag authority learns that its invoice was pledged but not to whom; the public learns neither the invoice nor the lender.
 
-Built for the Midnight Buildathon (AKINDO WaveHack). Wave 1 submission.
+This project is built on the Midnight Network.
 
-> This project builds on the Midnight Network.
+<!-- links:start -->
+| | |
+|---|---|
+| Live demo | _added at submission_ |
+| Demo video | _added at submission_ |
+| Deck | [docs/OnePledge-Wave1-deck.pdf](docs/OnePledge-Wave1-deck.pdf) |
+| Security review | [docs/security-review.md](docs/security-review.md) · [threat model](docs/threat-model.md) |
+| CI | [![CI](https://github.com/OoJae/onepledge/actions/workflows/ci.yml/badge.svg)](https://github.com/OoJae/onepledge/actions/workflows/ci.yml) |
+<!-- links:end -->
+
+Built for the Midnight Buildathon (AKINDO WaveHack), Wave 1.
 
 ---
 
 ## Live on Midnight Preprod
 
-Registry contract [`9eefef805cab2d064ebfe4c2f6b3599663860ba7dc1b69877e3a6b9c976eabd1`](https://preprod.midnightexplorer.com/contracts/9eefef805cab2d064ebfe4c2f6b3599663860ba7dc1b69877e3a6b9c976eabd1), deployed 2026-09-14. The full scenario ran against it with real proofs from a local proof server. Invoice numbers are deliberately left out of this public record: linking them to transactions is exactly what OnePledge prevents.
+<!-- v2-deployment:start -->
+_Registry v2 deployment in progress._
+<!-- v2-deployment:end -->
 
-| Step | Transaction | Block |
-|---|---|---|
-| Deploy registry | [`1b2ec165a8c9…`](https://preprod.midnightexplorer.com/transactions/1b2ec165a8c9c900c0811fff553f5306a5005253b5d52be99e50769e6eae39fd) | 2543245 |
-| Admit lender A | [`977953b77b99…`](https://preprod.midnightexplorer.com/transactions/977953b77b9910eff60862e2f39469f3ea0097aa803592552039c9c7172bd616) | 2543275 |
-| Admit lender B | [`b92abf7e8d4d…`](https://preprod.midnightexplorer.com/transactions/b92abf7e8d4d89b283faeb00d6449b23664baefc36715177f248239cc226b494) | 2543279 |
-| Pledge invoice 1 to lender A | [`be2b08d75694…`](https://preprod.midnightexplorer.com/transactions/be2b08d75694c7ca91519f8c9d67b4fcf4d40f587cae97f0cfbf5d5c097714aa) | 2543285 |
-| Re-pledge invoice 1 to lender B | **Rejected before proving:** Receivable already pledged (no transaction exists) | none |
-| Pledge invoice 2 to lender B | [`c88a1b8763f7…`](https://preprod.midnightexplorer.com/transactions/c88a1b8763f75a80221ed7ded8542b29789377b58165bc0f7ed69e75678a368b) | 2543290 |
-| Release invoice 1 | [`ca55d14f5493…`](https://preprod.midnightexplorer.com/transactions/ca55d14f54937b067b39033bed20fd3d87e998e782b2302a083f9ca8cd71708b) | 2543295 |
+**Registry v1 is deprecated.** The Wave 1 security review found that v1 signed only 248 of the tag's 256 bits, so one attestation could be pledged again with a different last byte. v2 fixes it and adds deployment binding and expiry; see [docs/security-review.md](docs/security-review.md). The v1 record is kept in [`deployments/archive/`](deployments/archive/).
 
-The web app's **Live registry** page reads this contract straight from the public indexer and decodes it with the contract's compiled ledger reader: 2 pledges, 1 release, 2 admitted lenders, 2 opaque tags, and nothing else. The full record is in [`deployments/preprod.json`](deployments/preprod.json).
+Check that the deployed contract is this repository's contract (no wallet needed):
+
+```bash
+npm ci && npm run verify:onchain --workspace cli
+```
+
+It compares every circuit's verifier key on chain with `contract/src/managed/registry/keys/*.verifier`, and the sealed tag authority and window with `deployments/preprod.json`.
 
 ## The problem
 
 In receivables finance a company borrows against invoices it has issued. The classic fraud is to pledge the same invoice to several lenders. Lenders could catch it by pooling their books, but a lender's client list and pricing are its business, so no lender will show them to a competitor.
 
-The obvious blockchain fix, publishing `hash(invoice number, supplier, amount, due date)` and rejecting repeats, fails in two ways ([try both attacks in the demo](#run-the-web-demo)):
+The obvious blockchain fix, publishing `hash(invoice number, supplier, amount, due date)` and rejecting repeats, fails in two ways ([both attacks are in the demo](#run-the-web-demo)):
 
 1. **Bypass.** Each bank writes invoice data its own way (`FV/2026/09/0412` vs `FV-2026-09-0412`, `PL5265877635` vs `5265877635`). A different spelling is a different hash, so the second pledge is accepted.
-2. **Snooping.** Anyone holding an invoice (the debtor, a lender that saw it during underwriting) can hash it and learn from the public registry whether, and when, it was financed.
+2. **Snooping.** Anyone who knows an invoice's details (the debtor, a lender that saw it during underwriting) can hash them and learn from the public registry whether, and when, it was financed.
 
 ## How OnePledge works
 
-- **Canonical identity.** Poland's KSeF e-invoicing system assigns every B2B invoice a unique 35-character number with a CRC-8 checksum. OnePledge accepts exactly one spelling of it.
-- **Keyed tags.** The tag authority computes `T = HMAC-SHA256(tagSecret, KSeF number)`. The same invoice always has the same tag, but nobody without the key can turn an invoice number into its tag, so the public tag set cannot be searched.
-- **Attestation checked in-circuit.** The authority signs `(domain, T, invoiceCommit, acceptanceDay, borrowerKey)` with a Jubjub Schnorr key. The `pledge` circuit verifies that signature inside the proof, so fabricated tags are rejected.
-- **One pledge, forever.** `pledge` inserts `T` into a public `Set` and fails if it is already there. Tags are never removed, so a released pledge cannot be re-used.
-- **Private lender, private invoice.** The lender is proven to be admitted through a Merkle path against a historic registry root, without revealing which lender. The note commitment hides the lender, the invoice commitment and a salt.
+- **Canonical identity.** Poland's KSeF e-invoicing system assigns each invoice issued through it a unique 35-character number with a CRC-8 checksum. OnePledge accepts exactly one spelling of it.
+- **Keyed tags.** The tag authority computes `T = HMAC-SHA256(tagSecret, KSeF number)`. The same invoice always has the same tag, and without the key nobody can turn an invoice number into its tag, so the public tag set cannot be searched by guessing numbers.
+- **Attestation checked in-circuit.** The authority signs one SHA-256 digest of `(domain, registry address, T, invoiceCommit, acceptanceDay, expiresAt, borrowerKey)` with a Jubjub Schnorr key. The `pledge` circuit recomputes the digest and verifies the signature inside the proof. Any change to any field fails, and the attestation is valid only for this registry and until it expires.
+- **One pledge, forever.** `pledge` inserts `T` into a public `Set` and fails if it is already there. Tags are never removed.
+- **Private lender, private invoice.** The lender is proven to be admitted through a Merkle path, without revealing which lender. The note commitment hides the lender, the invoice commitment and a salt.
 - **Unlinkable release.** Only the lender of record can release a pledge. It publishes a nullifier that cannot be linked to the note, the tag or the lender.
 
 ### What each party learns
 
-| Observer | Learns | Never learns |
+| Party | Learns | Does not learn |
 |---|---|---|
-| Public (anyone reading the chain) | The tag, an opaque note commitment, the lender-registry root used, pledge and release counts | Invoice number, amount, debtor, borrower, which lender financed it, which pledge was released |
-| Financing lender | The full invoice (it receives the opening of `invoiceCommit` off-chain and checks it) | Other lenders' deals |
-| Rival lender | That an invoice it was offered is already pledged | By whom, for how much, on what terms |
-| Tag authority | Which invoices it attested | Which lender financed them, or whether they were pledged at all (it cannot see which note is whose) |
+| Public (anyone reading the chain) | Tags, note leaf hashes, the roots used, expiry days, nullifiers, counts, timing | Invoice number, amount, debtor, borrower, which lender financed a pledge, which pledge was released |
+| Financing lender | The full invoice (it receives the opening of `invoiceCommit` and checks it) | Other lenders' deals |
+| Rival lender given a tag | That this invoice is pledged, and, since tags are permanent, its status from then on | By whom, for how much, on what terms |
+| Tag authority | Which invoices it attested, the borrower key and invoice commitment it signed, and whether and when each was pledged (it computes the tags, and the tag set is public) | Which lender financed them, or the terms |
 
-These properties are pinned by [privacy-leak tests](contract/src/test/privacy.test.ts) that serialize the full public ledger state and every circuit's public transcript and search them for each private value in several encodings.
+Lender keys are public leaves of the admitted-lender tree, so "which lender" is hidden among the admitted lenders, currently a small set.
+
+These properties are enforced by [privacy tests](contract/src/test/privacy.test.ts) that check every value in each circuit's public transcript against an allowlist of what the design publishes. A deliberately leaking contract that published a borrower pseudonym as a field element fails them.
+
+## Why not a trusted registry, and why Midnight
+
+| | Operator-run registry | Public hash registry | OnePledge on Midnight |
+|---|---|---|---|
+| Who sees each lender's queries and deals | The operator | Nobody | Nobody |
+| Can a spelling change dodge it | No | Yes | No: one canonical KSeF number, keyed tag |
+| Can outsiders enumerate who financed what | No | Yes | No: tags need the authority's key |
+| Is "one pledge per invoice" checked by code anyone can verify | No: trust the operator's database | Yes | Yes: in-circuit, verifier keys on chain |
+| What is still trusted | The operator, for everything | Nothing, but it leaks | The tag authority, to tag each invoice once (threshold tags in Wave 3) |
+
+Midnight is what makes the right-hand column possible:
+- **Private state with public verification.** The borrower's attestation, secret and the lender's identity stay in local private state; only what the circuit discloses reaches the public ledger.
+- **Proofs over private data.** The signature check, lender-membership proof and borrower binding all run inside a zero-knowledge proof.
+- **Selective disclosure as code.** Each `disclose()` is a deliberate, testable publication (see [the disclose ledger](docs/threat-model.md#what-each-circuit-publishes-the-disclose-ledger)).
+- **Fees without linkage.** DUST fees are shielded, so paying a fee does not identify the party on chain.
+
+## Lender protocol
+
+What a lender does before funding a pledged invoice:
+
+1. **Get the attestation and opening from the borrower.** The borrower hands over the attestation, the invoice fields and the salt behind `invoiceCommit`.
+2. **Verify the attestation off-chain.** Use `verifyAttestation(tagAuthority, registryAddress, attestation)` from the attester package. It checks the tag authority's signature for this registry, the same way the circuit does.
+3. **Check the tag against the public set.** Use the Live page's "Check a tag" box or the indexer. If the tag is already present, refuse: the invoice is encumbered.
+4. **Check the invoice opening.** Use `verifyInvoiceOpening(invoiceCommit, fields, salt)`.
+5. **Fund only against a note naming you.** Fund only after a pledge to your lender key lands on chain, then verify the note commitment with the opening you hold.
+
+An honest borrower's client stops before proving when a tag is already pledged. A dishonest one that proves against stale state is rejected when the chain replays the transaction. Encrypted delivery of the opening to the lender is Wave 2.
+
+## Midnight integration
+
+**Public ledger state vs private state**
+
+| Public ledger (`registry.compact`) | Private state (per party, local, [`witnesses.ts`](contract/src/witnesses.ts)) |
+|---|---|
+| `registrar` (hash of the registrar secret) | Registrar: `secretKey` |
+| `tagAuthority`, `windowStart`, `windowEnd` (sealed) | Borrower: `secretKey`, the attestation, target lender key, note salt |
+| `lenders` (HistoricMerkleTree of lender keys) | Lender: `secretKey`, the note opening it releases |
+| `tags` (Set), `notes` (HistoricMerkleTree), `releases` (Set) | |
+| `pledgeCount`, `releaseCount` (Counter) | |
+
+**Transaction lifecycle (CLI, [`cli/src`](cli/src))**
+1. **Witnesses:** the compiled contract calls into the party's private state.
+2. **Proving:** the local proof server (`httpClientProofProvider`) generates the proof.
+3. **Balancing:** the wallet (`WalletFacade`: shielded, unshielded and DUST) pays the fee in DUST.
+4. **Submission:** the transaction goes to the Preprod node.
+5. **Finalization:** the indexer (`indexerPublicDataProvider`) reports it and exposes the new ledger state.
+6. **Storage:** private state is kept encrypted with `levelPrivateStateProvider`, scoped per contract address.
+
+**Upgrade authority.** Midnight contracts have a maintenance authority that can insert or remove verifier keys. For this deployment it is a 1-of-1 key held by the deployer, recorded in `deployments/preprod.json`. Wave 2 moves it to a 2-of-3 committee; Wave 3 freezes a v1.0 deployment.
 
 ## Architecture
 
@@ -61,136 +123,142 @@ These properties are pinned by [privacy-leak tests](contract/src/test/privacy.te
 flowchart LR
   subgraph Off-chain
     KSeF[KSeF invoice number] --> TA[Tag authority<br/>attester package]
-    TA -- "attestation: T, invoiceCommit,<br/>acceptanceDay, borrowerKey, Schnorr sig" --> B[Borrower<br/>private state]
+    TA -- "attestation: T, invoiceCommit, day,<br/>expiry, borrowerKey, Schnorr sig<br/>(signed for one registry)" --> B[Borrower<br/>private state]
     L[Lender] -- "lender key" --> B
   end
   subgraph Midnight
-    B -- "pledge(lender): ZK proof" --> R[(Registry contract)]
+    B -- "pledge(lender): ZK proof" --> R[(Registry v2)]
     L -- "release(): ZK proof" --> R
     Reg[Registrar] -- "admitLender" --> R
   end
-  R -. "indexer (public)" .-> W[Web: live registry page]
+  R -. "public indexer" .-> W[Web: live registry page]
 ```
 
 ### Contract: [`contract/src/registry.compact`](contract/src/registry.compact)
 
 Compact toolchain **0.31.1** (language 0.23), the version Preprod runs. 4 provable circuits.
 
-| Ledger field | Type | Purpose |
-|---|---|---|
-| `registrar` | `Bytes<32>` | Hash of the registrar's secret. Admits lenders. |
-| `tagAuthority` | `sealed JubjubPoint` | The only key whose attestations are accepted. |
-| `windowStart`, `windowEnd` | `sealed Uint<32>` | Acceptance-date window this deployment accepts. |
-| `lenders` | `HistoricMerkleTree<10, Bytes<32>>` | Admitted lender keys, proven by path. |
-| `tags` | `Set<Bytes<32>>` | Every receivable ever pledged. |
-| `notes` | `HistoricMerkleTree<16, Bytes<32>>` | Pledge note commitments. |
-| `releases` | `Set<Bytes<32>>` | Release nullifiers. |
-| `pledgeCount`, `releaseCount` | `Counter` | Public activity counters. |
-
 | Circuit | Who runs it | What it proves |
 |---|---|---|
 | `admitLender(lender)` | Registrar | Caller knows the registrar secret. |
 | `rotateRegistrar(next)` | Registrar | Same, then hands the role over. |
-| `pledge(lender)` | Borrower | Attestation is bound to the caller's key; tag authority's signature is valid over the exact fields; acceptance day is inside the window; lender is in the registry; tag is new. |
-| `release()` | Lender of record | Caller's key is inside a note on the ledger; the nullifier is new. |
+| `pledge(lender)` | Borrower | The attestation is bound to the caller's key; the tag authority (not the identity point) signed the digest of the exact body for this registry; the attestation has not expired; the acceptance day is inside the window; the lender is admitted; the tag is new. |
+| `release()` | Lender of record | The caller's key is inside a note on the ledger; the nullifier is new. |
 
-**Witnesses** ([`witnesses.ts`](contract/src/witnesses.ts)): the party secret, the attestation, Merkle paths (computed from the ledger with `findPathForLeaf`), the note salt and opening, and the Schnorr challenge reduction.
-
-**Identity** never uses `ownPublicKey()`. Every role key is a domain-separated hash of a witness secret (`onepledge:registrar:v1`, `onepledge:borrower:v1`, `onepledge:lender:v1`).
-
-**Signatures.** Public networks do not ship `jubjubSchnorrVerify` yet (toolchain 0.32+, ledger 9), so the Schnorr polyfill from [midnightntwrk/example-zkloan](https://github.com/midnightntwrk/example-zkloan) is used, including its bounded-quotient challenge reduction. The signer computes the challenge with the contract's own compiled pure circuit, so signer and circuit hash identical bytes.
-
-**Proving keys.** `pledge` 10.5 MB, `release` 9.5 MB, `admitLender` and `rotateRegistrar` 2.7 MB each.
+- **Identity:** never uses `ownPublicKey()`. Every role key is a domain-separated hash of a witness secret.
+- **Signatures:** public networks do not ship `jubjubSchnorrVerify` yet (toolchain 0.32+, ledger 9), so the Schnorr polyfill from [midnightntwrk/example-zkloan](https://github.com/midnightntwrk/example-zkloan) is used, including its bounded-quotient challenge reduction. The signer computes the message and challenge with the contract's own compiled pure circuits.
+- **Proving keys:** `pledge` 10.5 MB, `release` 9.5 MB, `admitLender` and `rotateRegistrar` 2.7 MB each.
 
 ## Repository layout
 
 ```
 contract/     Compact contract, witnesses, simulator, tests (vitest)
-attester/     KSeF parser (CRC-8, NIP check digit), keyed tags, invoice commitments, Schnorr signer
-cli/          Headless wallet (with sync snapshots), deploy and end-to-end demo scripts
-web/          React app: walkthrough on the real circuits, attack comparison, live Preprod reader
+attester/     KSeF parser (CRC-8, NIP check digit), keyed tags, invoice commitments, signer and verifier
+cli/          Headless wallet, deploy, end-to-end demo, verify:onchain
+web/          React app: walkthrough on the compiled circuits, attack comparison, live Preprod reader
+docs/         Security review, threat model, deck, video script
 local-devnet/ Docker Compose for a local Midnight node + indexer (from midnightntwrk/midnight-local-dev)
-deployments/  Public record of deployments and transaction ids
+deployments/  Public record of deployments (active and archived)
 ```
 
 ## How to evaluate
 
-### Prerequisites
+### 1. Open the live demo
 
-- Node.js 22+ and Docker. The CLI scripts run on Node 22 via `npx node@22`: Node 23+ uses a built-in WebSocket that drops Preprod RPC submissions (observed with the Midnight wallet SDK 1.2.0).
-- Compact toolchain 0.31.1:
-  ```bash
-  curl --proto '=https' --tlsv1.2 -LsSf https://github.com/midnightntwrk/compact/releases/latest/download/compact-installer.sh | sh
-  compact update 0.31.1
-  ```
+The hosted web app (link at the top) needs no install:
+- **The story:** pledge, rejected double pledge and release, running the compiled circuits in your browser.
+- **Why not a hash registry:** both attacks, side by side with OnePledge.
+- **Live registry:** reads the Preprod contract from the public indexer, with a "Check a tag" box.
 
-### Build and test (no network, no wallet, about a minute)
+The walkthrough runs the compiled circuits against an in-memory ledger: no proofs, no transactions. The Preprod transactions come from the CLI.
+
+### 2. Build and test (about a minute)
+
+Requires Node.js 22.12+ and npm.
 
 ```bash
-npm install
-npm run compact        # compiles the contract and generates proving keys
-npm test               # contract + attester suites
+npm ci
+npm test                          # contract (137) + attester (39) suites
+npm run build --workspace web     # web app
+npm run verify:onchain --workspace cli
 ```
 
-### Run the web demo
+The compiled contract, ZK intermediate files and proving keys are committed, so nothing above needs the Compact toolchain. To recompile (CI does this and fails if the output differs from what is committed):
+
+```bash
+curl --proto '=https' --tlsv1.2 -LsSf https://github.com/midnightntwrk/compact/releases/latest/download/compact-installer.sh | sh
+compact update 0.31.1
+npm run compact    # runs compact compile +0.31.1; the first run downloads about 8 MB of ZK parameters
+```
+
+### 3. Run the web app locally
 
 ```bash
 npm run build --workspace web && npx --workspace web vite preview
 ```
 
-- **The story**: pledge, double-pledge, release, running the compiled circuits in your browser.
-- **Why not a hash registry**: both attacks, side by side with OnePledge.
-- **Live registry**: reads the Preprod contract from the public indexer. No wallet needed.
-
-The walkthrough runs the compiled circuits against an in-memory ledger. It does not generate proofs or send transactions. Real transactions are made by the CLI.
-
-### Deploy and run the scenario yourself
+### 4. Deploy and run the scenario yourself
 
 ```bash
-docker run -d -p 6300:6300 midnightntwrk/proof-server:8.1.0 midnight-proof-server -v
+docker run -d -p 127.0.0.1:6300:6300 midnightntwrk/proof-server:8.1.0 midnight-proof-server -v
 
 # Preprod
 npm run wallet:init --workspace cli     # prints an address; fund it at https://midnight-tmnight-preprod.nethermind.dev/
-npm run wallet:daemon --workspace cli   # syncs, snapshots state, registers NIGHT for DUST
-npm run deploy --workspace cli          # stop the daemon first; deploy restores from its snapshot
+npm run wallet:daemon --workspace cli   # first sync takes about 2 hours (shielded minutes, DUST the rest)
+npm run deploy --workspace cli          # stop the daemon first
 npm run demo --workspace cli            # admit lenders, pledge, rejected double pledge, second pledge, release
 
-# Local devnet instead
+# Local devnet instead (minutes, no faucet)
 docker compose -f local-devnet/standalone.yml up -d node indexer
 ONEPLEDGE_NETWORK=undeployed npm run deploy --workspace cli
 ONEPLEDGE_NETWORK=undeployed npm run demo --workspace cli
 ```
 
-Secrets (wallet mnemonic, tag-authority key, party secrets) are generated into `.secrets/` with mode 0600 and are git-ignored.
+- **Secrets:** the wallet mnemonic, tag-authority key and party secrets go into `.secrets/` (mode 0600, git-ignored).
+- **Node version:** the CLI scripts run on Node 22 through `npx node@22`. We observed Preprod transaction submissions dropping ("Normal Closure") under Node 26.0.0 and working under Node 22.23; the root cause is not isolated.
 
 ## Tests
 
 | Suite | Tests | Covers |
 |---|---:|---|
-| [`registry.test.ts`](contract/src/test/registry.test.ts) | 49 | Deployment; registrar auth and rotation; pledge; five double-pledge variants (same attestation, second lender, fresh re-attestation, new borrower wallet, after release); ten forgery cases (swapped tag, commitment, day, foreign key, tampered response and announcement, cross-message signature, missing domain separator, out-of-range and forged Schnorr reduction from a malicious prover); borrower binding; window boundaries; forged and mismatched lender paths; historic roots; release authorization, double release, forged note paths |
-| [`privacy.test.ts`](contract/src/test/privacy.test.ts) | 7 | No borrower, lender, invoice, salt or signature value in public state or transcripts; unlinkable notes; unlinkable releases |
-| [`ksef.test.ts`](attester/test/ksef.test.ts) | 16 | Official Ministry of Finance example, CRC-8 check value, every malformed spelling, NIP check digit, calendar validation |
+| [`registry.test.ts`](contract/src/test/registry.test.ts) | 49 | Deployment; registrar auth and rotation; pledge; five double-pledge variants; forgery (swapped fields, foreign key, tampered response and announcement, other digest, malicious Schnorr reduction); borrower binding; window boundaries; lender paths and historic roots; release authorization, double release, forged note paths |
+| [`security.test.ts`](contract/src/test/security.test.ts) | 76 | Regression tests from the security review: every byte of the tag and invoice commitment, stretched expiry, cross-registry replay, expiry boundaries, identity-point authority, off-chain `verifyAttestation` agreeing with the circuit |
+| [`privacy.test.ts`](contract/src/test/privacy.test.ts) | 12 | Allowlist of every public value in the pledge, release, admit and rotate transcripts, with positive controls; no private value in public state |
+| [`ksef.test.ts`](attester/test/ksef.test.ts) | 16 | Official Ministry of Finance example, CRC-8 check value, malformed spellings, NIP check digit, calendar validation |
 | [`tag.test.ts`](attester/test/tag.test.ts) | 17 | Tag determinism and keying, canonical-spelling enforcement, commitment hiding and binding for every field |
 | [`signing.test.ts`](attester/test/signing.test.ts) | 6 | Schnorr equation, scalar ranges, nonce freshness, wrong key and message |
 
-Every `assert` in the contract has at least one test that makes it fire. Adversarial tests replace honest witnesses with malicious ones, so they exercise the circuit's checks, not the client's.
+- **What the tests run:** the compiled circuits in the simulator. Proof-server-level and racing-transaction tests are Wave 2.
+- **Kinds of negative test:** some replace honest witnesses with malicious ones and exercise the circuit's own asserts. Others (missing lender path, unknown note) exercise client-side guards.
 
-## Trust model and known limitations (Wave 1)
+## Trust model and known limitations
 
-Stated plainly, because a registry is only as good as its assumptions:
-
-- **Single tag authority.** Uniqueness relies on the authority computing tags deterministically and keeping its HMAC key secret. A dishonest authority could tag one invoice twice under different tags, and a leaked key would let the holder compute tags for known invoice numbers. Wave 3 replaces it with a verifiable threshold tag (DLEQ proofs, 2-of-3 committee).
-- **The authority attests existence, not truth.** OnePledge stops the same invoice being financed twice. It does not stop a fabricated invoice; that is the attester's job (KSeF acceptance, audit sampling).
-- **Corrections.** A correction invoice has its own KSeF number. The attester must tag corrections by their root invoice; this is a policy of the attester service, not yet enforced by the contract.
-- **Synthetic KSeF numbers.** Demo invoices are well-formed but synthetic. The KSeF test-environment adapter is Wave 2.
-- **Demo wallet.** The CLI demo pays all parties' fees from one wallet, which links them at the fee level. In production each party uses its own wallet; parties' circuit identities are already independent.
-- **Metadata.** Pledge timing, the historic root chosen and fee payments are public.
-- **Not yet built.** Facilities and borrowing-base draws, encrypted invoice delivery to the lender, settlement, and a Lace-connected UI are Wave 2.
+- **Single tag authority.** Uniqueness relies on the authority tagging each invoice once and keeping its keys safe. A stolen signing key allows forged attestations; a leaked HMAC key lets the holder compute tags for known invoice numbers. Wave 3 replaces it with a verifiable threshold tag.
+- **The authority attests existence, not truth.** OnePledge stops the same invoice being financed twice; it does not stop a fabricated invoice.
+- **No lender consent yet.** A borrower with a valid attestation can pledge to any admitted lender, which permanently uses the tag. Lender acceptance and a void path are Wave 2.
+- **Invoices outside KSeF.** In 2026 some small sellers may still invoice outside KSeF. Lenders should require a KSeF number as a funding condition.
+- **Corrections.** A correction invoice has its own KSeF number; the attester must tag it by the root invoice.
+- **Tags are permanent.** A released pledge does not free the invoice, and anyone holding a tag can watch its status.
+- **Metadata.** DUST fee spends are shielded and do not link parties. What does link activity is network-level: one client submitting several transactions to a shared RPC node, indexer subscriptions, and timing. The CLI demo runs all parties from one machine.
+- **Synthetic KSeF numbers** until the Wave 2 test-environment adapter.
+- **Upgrade key.** A 1-of-1 deployer maintenance key (see Midnight integration).
 
 ## Roadmap
 
-- **Wave 2:** Lace-connected borrower desk and lender inbox on Preprod; facilities with borrowing-base draws (`openFacility`, `mergeDraw`); lender envelopes; 2-of-3 registrar; KSeF test-environment adapter; practitioner interviews with factors and KSeF integrators.
-- **Wave 3:** verifiable threshold tags (no single party can compute tags); pledge assignment between lenders; reusable `@onepledge/uniqueness` module for any registry with guessable IDs; mutation testing and external review.
+- **Wave 2:**
+  - Lace-connected borrower desk and lender inbox on Preprod
+  - lender acceptance and a void path
+  - facilities with borrowing-base draws
+  - encrypted invoice delivery to the lender
+  - 2-of-3 registrar and upgrade committee
+  - KSeF test-environment adapter
+  - proof-server and end-to-end tests in CI
+  - conversations with factors and KSeF integrators
+- **Wave 3:**
+  - verifiable threshold tags, so no single party can compute or sign tags
+  - pledge assignment between lenders
+  - a reusable uniqueness module for registries with guessable IDs
+  - external review
 
 ## Attribution
 

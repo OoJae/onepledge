@@ -7,8 +7,8 @@
   "main": "src/index.ts",
   "types": "src/index.ts",
   "scripts": {
-    "compact": "compact compile src/registry.compact src/managed/registry",
-    "compact:skip-zk": "compact compile --skip-zk src/registry.compact src/managed/registry",
+    "compact": "compact compile +0.31.1 src/registry.compact src/managed/registry",
+    "compact:skip-zk": "compact compile +0.31.1 --skip-zk src/registry.compact src/managed/registry",
     "test": "vitest run",
     "typecheck": "tsc -p tsconfig.json --noEmit"
   }
