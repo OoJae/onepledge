@@ -23,7 +23,19 @@ Built for the Midnight Buildathon (AKINDO WaveHack), Wave 1.
 ## Live on Midnight Preprod
 
 <!-- v2-deployment:start -->
-_Registry v2 deployment in progress._
+**Registry v2** · contract [`567df565569f032c0a32a0029fb2fdea9befb8b8ccccb3fb86736f10030c2355`](https://preprod.midnightexplorer.com/contracts/567df565569f032c0a32a0029fb2fdea9befb8b8ccccb3fb86736f10030c2355) · deployed 2026-09-14 in block 2550929 · upgrade key: 1-of-1 deployer key
+
+| Step | Circuit | Transaction | Block | Proved in | Finalized after |
+|---|---|---|---|---|---|
+| Deploy registry v2 | constructor | [`cad891d71cd3…`](https://preprod.midnightexplorer.com/transactions/cad891d71cd31d93f2647ad27a2aea3df5f3d5281675003cf121fead8d733e21) | 2550929 | | |
+| Registrar admits lender A | `admitLender` | [`eb29c1924977…`](https://preprod.midnightexplorer.com/transactions/eb29c19249774d45570bb5efc999fb574b24e7bba1a2b4daf99c1951c0f0ebda) | 2550969 | 1 s | 23.4 s |
+| Registrar admits lender B | `admitLender` | [`20cc71fccbab…`](https://preprod.midnightexplorer.com/transactions/20cc71fccbab0c2bc045c327c7a4a3477c62a9bcddb96695910bdc7d6c6ffc5b) | 2550973 | 0.9 s | 22.9 s |
+| Borrower pledges invoice 1 to lender A | `pledge` | [`b94a46c0dcb7…`](https://preprod.midnightexplorer.com/transactions/b94a46c0dcb7613b2acc381594201f6af6d602d1a5181a3f225023ff095022cf) | 2550977 | 4.5 s | 23.3 s |
+| Borrower re-pledges invoice 1 to lender B | `pledge` | none: rejected before proving: Receivable already pledged | | | |
+| Borrower pledges invoice 2 to lender B | `pledge` | [`219fe6b341ff…`](https://preprod.midnightexplorer.com/transactions/219fe6b341ff225650a03ba4e1cca7bacc3ce9a618867c2872657cf67725f62d) | 2550981 | 2.7 s | 23.6 s |
+| Lender A releases invoice 1 | `release` | [`8a0eaeecaeb2…`](https://preprod.midnightexplorer.com/transactions/8a0eaeecaeb29f5b74fa4779501021f6b1e798974b56f4fe03dbd664dc8aa2fc) | 2550985 | 2.7 s | 21.9 s |
+
+Step labels come from the operator's run log (`npm run demo`), not from the chain: on chain these are plain `admitLender`, `pledge` and `release` calls that do not say which lender or invoice they concern. Proving ran on a local proof server (Docker, Apple silicon laptop); "finalized after" is from starting the call to the indexer reporting it.
 <!-- v2-deployment:end -->
 
 **Registry v1 is deprecated.** The Wave 1 security review found that v1 signed only 248 of the tag's 256 bits, so one attestation could be pledged again with a different last byte. v2 fixes it and adds deployment binding and expiry; see [docs/security-review.md](docs/security-review.md). The v1 record is kept in [`deployments/archive/`](deployments/archive/).
@@ -215,7 +227,7 @@ ONEPLEDGE_NETWORK=undeployed npm run demo --workspace cli
 ```
 
 - **Secrets:** the wallet mnemonic, tag-authority key and party secrets go into `.secrets/` (mode 0600, git-ignored).
-- **Node version:** the CLI scripts run on Node 22 through `npx node@22`. We observed Preprod transaction submissions dropping ("Normal Closure") under Node 26.0.0 and working under Node 22.23; the root cause is not isolated.
+- **Node version and RPC disconnects:** the CLI scripts run on Node 22 through `npx node@22`. The Preprod RPC sometimes closes the WebSocket as a transaction is sent ("Normal Closure"): repeatedly for us under Node 26.0.0, occasionally under Node 22.23 (two of three v2 deploy attempts). Rerunning succeeds; `npm run demo` retries on its own after checking that the ledger counter did not change. The root cause is not isolated.
 
 ## Tests
 

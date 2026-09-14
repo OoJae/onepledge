@@ -10,6 +10,7 @@
 // transaction hashes would create exactly the link the registry exists to avoid.
 
 import { randomBytes } from 'node:crypto';
+import { inspect } from 'node:util';
 import { findDeployedContract } from '@midnight-ntwrk/midnight-js-contracts';
 import {
   addressBytes,
@@ -96,6 +97,33 @@ const note = (label: string, circuit: string, outcome: string, tx?: TxPublic) =>
 
 const lenderKey = (s: Uint8Array) => Registry.pureCircuits.lenderKey(s);
 
+// The Preprod RPC sometimes closes the WebSocket as a transaction is sent ("Normal Closure").
+// Retry only that failure, and only if the circuit's public counter shows nothing landed.
+const counterFor = async (circuit: string) => {
+  const state = await providers.publicDataProvider.queryContractState(record.contractAddress);
+  if (!state) throw new Error('Contract state not found');
+  const l = Registry.ledger(state.data);
+  return circuit === 'admitLender' ? l.lenders.firstFree() : circuit === 'release' ? l.releaseCount : l.pledgeCount;
+};
+
+const submit = async (circuit: string, call: () => Promise<{ public: TxPublic }>) => {
+  for (let attempt = 1; ; attempt++) {
+    const before = await counterFor(circuit);
+    startCall();
+    try {
+      return await call();
+    } catch (e) {
+      const disconnected = /Normal Closure|disconnected from wss/.test(inspect(e, { depth: 12 }));
+      if (!disconnected || attempt >= 4) throw e;
+      log(`${circuit}: RPC disconnected during submission (attempt ${attempt}); checking the chain before retrying...`);
+      await new Promise((r) => setTimeout(r, 30_000));
+      if ((await counterFor(circuit)) !== before) {
+        throw new Error(`${circuit} changed the ledger despite the disconnect; not retrying`, { cause: e });
+      }
+    }
+  }
+};
+
 const attestFor = (ksefNumber: string, amountGrosz: string) => {
   const parsed = parseKsefNumber(ksefNumber);
   const fields: InvoiceFields = {
@@ -126,8 +154,11 @@ const invoice2 = syntheticKsefNumber('5265877635', '2026-09-11', `02${suffix}`);
 // 1. Registrar admits both lenders.
 const registrar = await join('registrar', { secretKey: parties.registrar });
 for (const [label, secret] of [['lender A', parties.lenderA], ['lender B', parties.lenderB]] as const) {
-  startCall();
-  const tx = await registrar.callTx.admitLender(lenderKey(secret));
+  if (record.events.some((e) => e.label === `Registrar admits ${label}` && e.txHash)) {
+    log(`Registrar admits ${label}: already recorded, skipping`);
+    continue;
+  }
+  const tx = await submit('admitLender', () => registrar.callTx.admitLender(lenderKey(secret)));
   note(`Registrar admits ${label}`, 'admitLender', 'accepted', tx.public);
 }
 
@@ -140,8 +171,7 @@ const borrowerA = await join('borrower', {
   pledgeLender: lenderKey(parties.lenderA),
   noteSalt: noteSalt1,
 });
-startCall();
-const pledged = await borrowerA.callTx.pledge(lenderKey(parties.lenderA));
+const pledged = await submit('pledge', () => borrowerA.callTx.pledge(lenderKey(parties.lenderA)));
 note('Borrower pledges invoice 1 to lender A', 'pledge', 'accepted', pledged.public);
 
 // 3. Same invoice, fresh attestation, different lender: must be rejected.
@@ -171,8 +201,7 @@ await providers.privateStateProvider.set('borrower', {
   pledgeLender: lenderKey(parties.lenderB),
   noteSalt: newSalt(),
 });
-startCall();
-const pledged2 = await borrowerA.callTx.pledge(lenderKey(parties.lenderB));
+const pledged2 = await submit('pledge', () => borrowerA.callTx.pledge(lenderKey(parties.lenderB)));
 note('Borrower pledges invoice 2 to lender B', 'pledge', 'accepted', pledged2.public);
 
 // 5. Lender A releases invoice 1 (paid).
@@ -180,8 +209,7 @@ const lenderA = await join('lenderA', {
   secretKey: parties.lenderA,
   releaseNote: { tag: att1.attestation.tag, invoiceCommit: att1.attestation.invoiceCommit, salt: noteSalt1 },
 });
-startCall();
-const released = await lenderA.callTx.release();
+const released = await submit('release', () => lenderA.callTx.release());
 note('Lender A releases invoice 1', 'release', 'accepted', released.public);
 
 // No snapshot here: this run submitted transactions (see saveSnapshot).
