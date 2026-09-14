@@ -6,7 +6,7 @@
 <style>
   @page { size: 1600px 900px; margin: 0; }
   :root {
-    --paper: #f6f4ef; --card: #fffdf8; --ink: #15171a; --soft: #4b4f57; --muted: #7a7f88;
+    --paper: #f6f4ef; --card: #fffdf8; --ink: #15171a; --soft: #4b4f57; --muted: #5f646c;
     --rule: #e2ded4; --accent: #1f5e46; --accent-soft: #e3efe8; --danger: #a3302a; --danger-soft: #f6e4e1;
     --mono: ui-monospace, 'SF Mono', Menlo, Consolas, monospace;
     --sans: 'Inter', ui-sans-serif, system-ui, -apple-system, 'Segoe UI', sans-serif;
@@ -52,6 +52,16 @@
   ul.tight { margin: 0; padding-left: 26px; }
   ul.tight li { margin-bottom: 8px; }
   .chip { display: inline-block; font-family: var(--mono); font-size: 19px; background: var(--card); border: 1px solid var(--rule); border-radius: 8px; padding: 6px 12px; margin: 0 8px 8px 0; color: var(--ink); }
+  .stack { display: grid; gap: 14px; }
+  .kv { display: grid; grid-template-columns: 250px 1fr; gap: 10px 24px; font-size: 24px; align-items: baseline; }
+  .kv dt { color: var(--muted); font-size: 17px; text-transform: uppercase; letter-spacing: .06em; font-weight: 700; }
+  .kv dd { margin: 0; color: var(--ink); font-weight: 600; overflow-wrap: anywhere; }
+  .shot { border: 1px solid var(--rule); border-radius: 12px; width: 100%; display: block; }
+  .fix { border-left: 6px solid var(--accent); }
+  .compare td, .compare th { font-size: 21px; padding: 12px 14px; }
+  .compare td:first-child { white-space: normal; width: 30%; }
+  .compare td:last-child { color: var(--ink); font-weight: 600; }
+  a { color: inherit; text-decoration: none; }
 </style>
 </head>
 <body>
@@ -63,8 +73,9 @@
     <p class="kicker">Midnight Buildathon · Wave 1</p>
     <h1>One pledge per invoice.<br/>No lender sees another's book.</h1>
     <p class="lede">A registry on Midnight that refuses to let the same receivable be financed twice, while each lender sees only its own deals.</p>
+    <p style="margin-top:36px"><span class="chip">Try it: {{DEMO_URL}}</span><span class="chip">github.com/OoJae/onepledge</span></p>
   </div>
-  <div class="footer"><span>github.com/OoJae/onepledge</span><span>Apache-2.0 · Compact 0.31.1</span></div>
+  <div class="footer"><span>This project is built on the Midnight Network.</span><span>Apache-2.0 · Compact 0.31.1</span></div>
 </section>
 
 <!-- 2 -->
@@ -90,87 +101,145 @@
 
 <!-- 3 -->
 <section class="slide">
-  <p class="kicker">How it works</p>
-  <h2>A canonical ID, a keyed tag, and a proof checked on Midnight.</h2>
-  <div class="flow">
-    <div class="step"><div class="n">01 · IDENTITY</div><h3>KSeF number</h3><p>Poland's national e-invoicing system assigns every B2B invoice one 35-character number with a CRC-8. One spelling only.</p></div>
-    <div class="step"><div class="n">02 · TAG</div><h3>Keyed, not guessable</h3><p>The tag authority computes <span class="mono">HMAC(key, number)</span> and signs it with the borrower's key and an invoice commitment.</p></div>
-    <div class="step"><div class="n">03 · PROOF</div><h3>Checked in-circuit</h3><p>The borrower proves the signature, the acceptance window and that the lender is admitted, all in zero knowledge.</p></div>
-    <div class="step"><div class="n">04 · LEDGER</div><h3>Tag set rejects repeats</h3><p>The tag goes into a public set forever. The second pledge can't produce a valid proof.</p></div>
+  <p class="kicker">Why not a trusted registry · why Midnight</p>
+  <h2>Keep the check public and the books private.</h2>
+  <div class="card" style="padding:8px 24px">
+    <table class="compare">
+      <tr><th></th><th>Operator-run registry</th><th>Public hash registry</th><th>OnePledge on Midnight</th></tr>
+      <tr><td>Who sees each lender's deals</td><td>The operator</td><td>Nobody</td><td>Nobody</td></tr>
+      <tr><td>Dodged by a spelling change</td><td>No</td><td>Yes</td><td>No: one KSeF number, keyed tag</td></tr>
+      <tr><td>Outsiders can see who financed what</td><td>No</td><td>Yes</td><td>No: tags need the authority's key</td></tr>
+      <tr><td>Rule checked by code anyone can verify</td><td>No</td><td>Yes</td><td>Yes: in-circuit, verifier keys on chain</td></tr>
+      <tr><td>Still trusted</td><td>The operator, for everything</td><td>Nothing, but it leaks</td><td>The tag authority, to tag each invoice once</td></tr>
+    </table>
   </div>
-  <p style="margin-top:36px">
-    <span class="chip">in-circuit Jubjub Schnorr</span><span class="chip">Set&lt;Bytes&lt;32&gt;&gt;</span><span class="chip">HistoricMerkleTree</span><span class="chip">witness secrets, no ownPublicKey()</span><span class="chip">release nullifiers</span>
-  </p>
+  <p style="margin-top:22px">Midnight gives private state with public verification: attestations, secrets and lender identity stay local; only what a circuit discloses reaches the ledger.</p>
   <div class="footer"><span>OnePledge</span><span>3</span></div>
 </section>
 
 <!-- 4 -->
 <section class="slide">
-  <p class="kicker">Selective disclosure</p>
-  <h2>Everyone learns exactly what they need.</h2>
-  <div class="card" style="padding:12px 28px">
-    <table>
-      <tr><th>Party</th><th>Learns</th><th>Never learns</th></tr>
-      <tr><td>Financing lender</td><td><span class="pill yes">full invoice</span> checked against the signed commitment</td><td>Other lenders' deals</td></tr>
-      <tr><td>Rival lender</td><td><span class="pill yes">"already pledged"</span></td><td>By whom, how much, which terms</td></tr>
-      <tr><td>Public chain</td><td>Opaque tag, note commitment, counts</td><td><span class="pill no">invoice, amount, borrower, lender</span></td></tr>
-      <tr><td>Tag authority</td><td>Which invoices it attested</td><td>Which lender financed them</td></tr>
-    </table>
+  <p class="kicker">How it works</p>
+  <h2>A canonical ID, a keyed tag, and a proof checked on Midnight.</h2>
+  <div class="flow">
+    <div class="step"><div class="n">01 · IDENTITY</div><h3>KSeF number</h3><p>Poland's e-invoicing system gives each invoice issued through it one 35-character number with a CRC-8. One spelling only.</p></div>
+    <div class="step"><div class="n">02 · TAG</div><h3>Keyed, not guessable</h3><p>The tag authority computes <span class="mono">T = HMAC(key, number)</span>. Same invoice, same tag.</p></div>
+    <div class="step"><div class="n">03 · ATTEST</div><h3>One signed digest</h3><p>Its Jubjub key signs a digest of (domain, registry, T, invoice commitment, day, expiry, borrower key).</p></div>
+    <div class="step"><div class="n">04 · PROVE</div><h3>Tag set rejects repeats</h3><p>The circuit checks the signature, window, expiry and lender membership, then adds T to a public set forever.</p></div>
   </div>
-  <p style="margin-top:24px">Pinned by privacy-leak tests that search the full public state and every circuit transcript for each private value.</p>
+  <p style="margin-top:36px">
+    <span class="chip">in-circuit Jubjub Schnorr</span><span class="chip">persistentHash of the whole attestation</span><span class="chip">Set&lt;Bytes&lt;32&gt;&gt;</span><span class="chip">HistoricMerkleTree</span><span class="chip">release nullifiers</span>
+  </p>
   <div class="footer"><span>OnePledge</span><span>4</span></div>
 </section>
 
 <!-- 5 -->
 <section class="slide">
-  <p class="kicker">Wave 1 · shipped</p>
-  <h2>A working registry, tested like it handles money.</h2>
+  <p class="kicker">Selective disclosure</p>
+  <h2>Everyone learns what they need, and no more.</h2>
+  <div class="card" style="padding:12px 28px">
+    <table>
+      <tr><th>Party</th><th>Learns</th><th>Never learns</th></tr>
+      <tr><td>Financing lender</td><td><span class="pill yes">full invoice</span> checked against the signed commitment</td><td>Other lenders' deals</td></tr>
+      <tr><td>Rival lender given a tag</td><td><span class="pill yes">"already pledged"</span></td><td>By whom, how much, which terms</td></tr>
+      <tr><td>Public chain</td><td>Opaque tags, note commitments, roots, expiry days, counts</td><td><span class="pill no">invoice, amount, borrower, lender</span></td></tr>
+      <tr><td>Tag authority</td><td>Its attested invoices, and whether and when each was pledged</td><td>Which lender financed them, or the terms</td></tr>
+    </table>
+  </div>
+  <p style="margin-top:24px">Enforced by privacy tests that check every value in each circuit's public transcript against an allowlist.</p>
+  <div class="footer"><span>OnePledge</span><span>5</span></div>
+</section>
+
+<!-- 6 -->
+<section class="slide">
+  <p class="kicker">Live on Midnight Preprod · registry v2</p>
+  <h2>Deployed, exercised, and checkable without a wallet.</h2>
+  <div class="grid2" style="align-items:start">
+    <div class="stack">
+      <dl class="kv card">
+        <dt>Contract</dt><dd class="mono">{{V2_ADDRESS_SHORT}}</dd>
+        <dt>Deployed</dt><dd>block {{V2_BLOCK}}</dd>
+        <dt>Scenario</dt><dd>2 lenders admitted, 2 pledges, 1 release; the double pledge refused before proving</dd>
+        <dt>Proving time</dt><dd>{{PROVE_RANGE}} per transaction on a laptop</dd>
+        <dt>Upgrade key</dt><dd>1-of-1 deployer key, disclosed</dd>
+      </dl>
+      <p style="margin:0;font-size:22px"><span class="mono">npm run verify:onchain</span> compares every on-chain verifier key with this repository.</p>
+    </div>
+    <img class="shot" src="live-v2.png" alt="The Live page reading the v2 registry from the Preprod indexer" />
+  </div>
+  <div class="footer"><span>OnePledge</span><span>6</span></div>
+</section>
+
+<!-- 7 -->
+<section class="slide">
+  <p class="kicker">Tested and self-audited</p>
+  <h2>We attacked it before anyone else could.</h2>
   <div class="grid3" style="margin-bottom:28px">
-    <div class="card"><div class="stat">4</div><div class="statlabel">circuits compiled with proving keys</div></div>
-    <div class="card"><div class="stat">95</div><div class="statlabel">tests: adversarial witnesses, forgery, privacy leaks</div></div>
-    <div class="card"><div class="stat">6</div><div class="statlabel">Preprod transactions: deploy, 2 lenders, 2 pledges, release; the double pledge rejected before proving</div></div>
+    <div class="card"><div class="stat">176</div><div class="statlabel">tests: adversarial witnesses, forgery, privacy allowlists</div></div>
+    <div class="card"><div class="stat">88</div><div class="statlabel">findings from an adversarial review, each challenged by a skeptic</div></div>
+    <div class="card"><div class="stat">1</div><div class="statlabel">critical bug found in v1, fixed in v2, disclosed in full</div></div>
   </div>
   <div class="grid2">
-    <div class="card good">
-      <h3>Proven</h3>
-      <ul class="tight">
-        <li>Five double-pledge variants rejected</li>
-        <li>Ten forgery attempts rejected, including a malicious prover</li>
-        <li>Stolen attestations can't be used by anyone else</li>
-        <li>Live registry page reads the Preprod contract, no wallet</li>
-      </ul>
+    <div class="card fix">
+      <h3>F01: one attestation, 256 pledges</h3>
+      <p>v1 signed only 248 bits of the tag, so changing its last byte passed. v2 signs one SHA-256 digest of the whole attestation, bound to the registry and an expiry. A regression test flips every byte.</p>
     </div>
     <div class="card">
       <h3>Honest limits</h3>
       <ul class="tight">
         <li>Single tag authority (threshold in Wave 3)</li>
+        <li>No lender consent step or void path yet (Wave 2)</li>
         <li>Synthetic KSeF numbers until the test-environment adapter</li>
-        <li>Facilities, draws and Lace UI are Wave 2</li>
       </ul>
     </div>
   </div>
-  <div class="footer"><span>OnePledge</span><span>5</span></div>
+  <div class="footer"><span>docs/security-review.md</span><span>7</span></div>
 </section>
 
-<!-- 6 -->
+<!-- 8 -->
 <section class="slide">
   <p class="kicker">Market and roadmap</p>
   <h2>Start where every invoice already has one ID.</h2>
   <div class="grid2">
     <div class="card">
       <h3>Beachhead: factoring on KSeF</h3>
-      <p>Mandatory national e-invoicing gives every Polish B2B invoice a canonical number. Buyers: factors, supply-chain-finance banks, private-credit funds. Distribution: e-invoicing access points that already connect everyone.</p>
+      <p>Poland's national e-invoicing gives B2B invoices a canonical number. Buyers: factors, supply-chain-finance banks, private-credit funds. Distribution: the e-invoicing software that already connects them.</p>
       <p style="margin-top:16px">Useful with just two lenders. No consortium needed.</p>
     </div>
     <div class="card">
       <h3>Next</h3>
       <ul class="tight">
-        <li><b>Wave 2:</b> Lace-connected borrower desk and lender inbox on Preprod, facilities and borrowing-base draws, encrypted invoice delivery, KSeF test-environment adapter, practitioner interviews</li>
-        <li><b>Wave 3:</b> threshold tags (no single party can tag), pledge assignment, reusable uniqueness module for any guessable-ID registry</li>
+        <li><b>Wave 2:</b> Lace-connected borrower desk and lender inbox, lender acceptance and void path, encrypted invoice delivery, KSeF test-environment adapter, 2-of-3 upgrade committee, practitioner interviews</li>
+        <li><b>Wave 3:</b> threshold tags, pledge assignment between lenders, a reusable uniqueness module for any guessable-ID registry</li>
       </ul>
     </div>
   </div>
-  <div class="footer"><span>github.com/OoJae/onepledge</span><span>6</span></div>
+  <div class="footer"><span>OnePledge</span><span>8</span></div>
+</section>
+
+<!-- 9 -->
+<section class="slide">
+  <p class="kicker">Team</p>
+  <h2>OoJae, solo builder.</h2>
+  <div class="grid2">
+    <div class="card">
+      <h3>Built in Wave 1</h3>
+      <ul class="tight">
+        <li>Compact registry contract and in-circuit Schnorr</li>
+        <li>Tag authority, CLI and Preprod deployment</li>
+        <li>Web demo, security review and threat model</li>
+      </ul>
+    </div>
+    <div class="card">
+      <h3>Find it</h3>
+      <dl class="kv" style="grid-template-columns: 150px 1fr">
+        <dt>Demo</dt><dd>{{DEMO_URL}}</dd>
+        <dt>Code</dt><dd>github.com/OoJae/onepledge</dd>
+        <dt>GitHub</dt><dd>@OoJae</dd>
+      </dl>
+    </div>
+  </div>
+  <div class="footer"><span>This project is built on the Midnight Network.</span><span>9</span></div>
 </section>
 
 </body>
