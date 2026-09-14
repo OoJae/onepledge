@@ -104,14 +104,15 @@ const readSnapshot = (network: NetworkConfig): Snapshot | undefined => {
 };
 
 /**
- * Save the wallet state, but only when it is safe to resume from: fully synced and with no
- * transactions of our own still pending. A snapshot taken right after submitting a transaction
+ * Save the wallet state, but only when it is safe to resume from: no transactions of our own
+ * pending. Sync progress is safe to save; a snapshot taken right after submitting a transaction
  * holds optimistic local state that the indexer later replays, which corrupts the next restore.
- * The previous snapshot is kept as `.bak`.
+ * Commands that submit transactions (deploy, demo) therefore never snapshot. The previous
+ * snapshot is kept as `.bak`.
  */
 export const saveSnapshot = async (ctx: WalletContext, network: NetworkConfig): Promise<boolean> => {
   const state = await Rx.firstValueFrom(ctx.wallet.state());
-  if (!state.isSynced || PendingTransactions.all(state.pending).length > 0) return false;
+  if (PendingTransactions.all(state.pending).length > 0) return false;
   const [shielded, unshielded, dust] = await Promise.all([
     ctx.wallet.shielded.serializeState(),
     ctx.wallet.unshielded.serializeState(),

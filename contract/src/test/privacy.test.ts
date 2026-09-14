@@ -1,9 +1,13 @@
 // SPDX-License-Identifier: Apache-2.0
-// Privacy-leak tests. They serialize everything an outside observer can see (the public ledger
-// state and the circuit's public transcript) and assert that no private value appears in it,
-// in any of several encodings.
+// Privacy-leak tests.
+//  1. Allowlist: every value in each circuit's public transcript must be something the design
+//     intends to publish (tag, note leaf hash, roots, nullifier, registry address, expiry, public
+//     ledger reads) or a short constant. Any other value, in either byte order, fails. This catches
+//     leaks of Field-typed, hashed or derived values that a search for known encodings would miss.
+//  2. Denylist: known private values are searched for in the transcript and the full ledger state.
 
 import { describe, expect, it } from 'vitest';
+import { CompactTypeBytes, leafHash } from '@midnight-ntwrk/compact-runtime';
 import { pureCircuits } from '../managed/registry/contract/index.js';
 import {
   attestInvoice,
@@ -42,6 +46,55 @@ const expectAbsent = (view: string, label: string, value: Uint8Array | string | 
   for (const enc of encodings(value)) {
     expect(view.includes(enc.toLowerCase()) || view.includes(enc), `${label} leaked as ${enc}`).toBe(false);
   }
+};
+
+// ---------- allowlist machinery ----------
+
+const hexOf = (b: Uint8Array) => Buffer.from(b).toString('hex');
+const reverseHex = (h: string) => (h.match(/../g) ?? []).reverse().join('');
+const asBig = (h: string) => BigInt(`0x${h || '0'}`);
+
+/** Every byte string in a transcript, as hex. */
+const transcriptValues = (transcript: unknown): string[] => {
+  const out: string[] = [];
+  const walk = (v: unknown) => {
+    if (v instanceof Uint8Array) out.push(hexOf(v));
+    else if (Array.isArray(v)) v.forEach(walk);
+    else if (v && typeof v === 'object') Object.values(v).forEach(walk);
+  };
+  walk(transcript);
+  return [...new Set(out)];
+};
+
+/** Values up to this many bytes are treated as constants (ledger indices, counters, booleans). */
+const CONSTANT_BYTES = 2;
+
+type Allowed = Uint8Array | bigint;
+const allowedSet = (values: Allowed[]) => {
+  const set = new Set<bigint>();
+  for (const v of values) {
+    if (typeof v === 'bigint') set.add(v);
+    else {
+      set.add(asBig(hexOf(v)));
+      set.add(asBig(reverseHex(hexOf(v))));
+    }
+  }
+  return set;
+};
+
+/** Values in the transcript that are neither short constants nor allowlisted (in either byte order). */
+const unexpectedValues = (values: string[], allowed: Allowed[]): string[] => {
+  const set = allowedSet(allowed);
+  return values.filter((h) => h.length / 2 > CONSTANT_BYTES && !set.has(asBig(h)) && !set.has(asBig(reverseHex(h))));
+};
+
+const bytes32 = new CompactTypeBytes(32);
+/** The hash a HistoricMerkleTree stores for a Bytes<32> leaf. */
+const merkleLeaf = (leaf: Uint8Array): Uint8Array[] => {
+  const hashed = leafHash({ value: bytes32.toValue(leaf), alignment: bytes32.alignment() } as never) as unknown as {
+    value: Uint8Array[];
+  };
+  return hashed.value;
 };
 
 const pledgeOne = (): { w: World; inv: AttestedInvoice; note: Uint8Array; noteSalt: Uint8Array } => {
@@ -115,3 +168,82 @@ describe('what an observer learns from a release', () => {
     expectAbsent(proof, 'lender secret', w.lenderA);
   });
 });
+
+describe('allowlist: a transcript publishes only what the design intends', () => {
+  it('pledge publishes only the tag, note leaf, lender root, registry, expiry and public ledger reads', () => {
+    const w = newWorld();
+    const inv = attestInvoice(w.authority, w.borrower, invoiceNumber());
+    const before = w.sim.ledger();
+    const { note } = pledgeAs(w, inv, w.lenderA);
+    const values = transcriptValues(w.sim.lastResult!.proofData.publicTranscript);
+    const extra = unexpectedValues(values, [
+      inv.attestation.tag,
+      ...merkleLeaf(note),
+      before.lenders.root().field,
+      w.sim.addressBytes(),
+      inv.attestation.expiresAt,
+      before.tagAuthority.x,
+      before.tagAuthority.y,
+      before.windowStart,
+      before.windowEnd,
+    ]);
+    expect(extra, `unexpected public values: ${extra.join(', ')}`).toEqual([]);
+    // Short private values would pass the size filter, so check the one that matters explicitly.
+    const day = inv.attestation.acceptanceDay;
+    const dayHex = day.toString(16).padStart(4, '0');
+    const leaksDay = values.some((h) => (asBig(h) === day || asBig(reverseHex(h)) === day) && day !== before.windowStart && day !== before.windowEnd);
+    expect(leaksDay, `acceptance day ${dayHex} published`).toBe(false);
+  });
+
+  it('release publishes only the nullifier and the notes root', () => {
+    const w = newWorld();
+    const inv = attestInvoice(w.authority, w.borrower, invoiceNumber());
+    const { note, noteSalt } = pledgeAs(w, inv, w.lenderA);
+    const notesRoot = w.sim.ledger().notes.root().field;
+    w.sim.as(lenderReleaseState(w.lenderA, inv, noteSalt));
+    w.sim.release();
+    const values = transcriptValues(w.sim.lastResult!.proofData.publicTranscript);
+    const extra = unexpectedValues(values, [pureCircuits.releaseNullifier(note, w.lenderA), notesRoot]);
+    expect(extra, `unexpected public values: ${extra.join(', ')}`).toEqual([]);
+  });
+
+  it('admitLender and rotateRegistrar publish only the registrar key and the admitted or next key', () => {
+    const w = newWorld();
+    const newLender = pureCircuits.lenderKey(new Uint8Array(32).fill(7));
+    const registrarKey = w.sim.ledger().registrar;
+    w.sim.as({ secretKey: w.registrar });
+    w.sim.admitLender(newLender);
+    let extra = unexpectedValues(transcriptValues(w.sim.lastResult!.proofData.publicTranscript), [
+      registrarKey,
+      newLender,
+      ...merkleLeaf(newLender),
+    ]);
+    expect(extra, `admitLender: ${extra.join(', ')}`).toEqual([]);
+
+    const next = pureCircuits.registrarKey(new Uint8Array(32).fill(9));
+    w.sim.rotateRegistrar(next);
+    extra = unexpectedValues(transcriptValues(w.sim.lastResult!.proofData.publicTranscript), [registrarKey, next]);
+    expect(extra, `rotateRegistrar: ${extra.join(', ')}`).toEqual([]);
+    expectAbsent(toJson(w.sim.lastResult!.proofData.publicTranscript), 'registrar secret', w.registrar);
+  });
+
+  it('positive control: the allowlist flags an injected 32-byte private value in either byte order', () => {
+    const w = newWorld();
+    const inv = attestInvoice(w.authority, w.borrower, invoiceNumber());
+    const borrowerKey = pureCircuits.borrowerKey(w.borrower);
+    const allowed = [inv.attestation.tag];
+    expect(unexpectedValues([hexOf(inv.attestation.tag), hexOf(borrowerKey)], allowed)).toEqual([hexOf(borrowerKey)]);
+    const le = reverseHex(hexOf(borrowerKey));
+    expect(unexpectedValues([le], allowed)).toEqual([le]);
+  });
+
+  it('positive control: the allowlist flags an injected Field in its trimmed little-endian form', () => {
+    const secretField = inputField();
+    const leTrimmed = reverseHex(secretField.toString(16).padStart(64, '0')).replace(/(00)+$/, '');
+    expect(unexpectedValues([leTrimmed], [])).toEqual([leTrimmed]);
+  });
+});
+
+function inputField(): bigint {
+  return 0x1234567890abcdef1234567890abcdef1234567890abcdef123456789n;
+}

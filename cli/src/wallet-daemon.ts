@@ -32,7 +32,7 @@ const tick = async () => {
   const { night, dust } = balances(latest);
   log(`${syncSummary(latest)} | NIGHT=${night} DUST=${dust}`);
   try {
-    if (!(await saveSnapshot(ctx, network))) log('Snapshot skipped (not synced yet, or transactions pending).');
+    if (!(await saveSnapshot(ctx, network))) log('Snapshot skipped (transactions pending).');
   } catch (e) {
     log(`Snapshot failed: ${(e as Error).message}`);
   }
