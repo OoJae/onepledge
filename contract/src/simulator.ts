@@ -16,8 +16,16 @@ type WitnessSet = typeof witnesses;
 
 export const COIN_PUBLIC_KEY = '0'.repeat(64);
 
+export interface SimulatorOptions {
+  /** Contract address (32-byte hex). Defaults to a sample address. */
+  readonly address?: string;
+  /** Block time in unix seconds. Defaults to the wall clock. */
+  readonly time?: number;
+}
+
 export class RegistrySimulator {
   readonly contract: Contract<OnePledgePrivateState, WitnessSet>;
+  readonly address: string;
   context: CircuitContext<OnePledgePrivateState>;
   lastResult?: CircuitResults<OnePledgePrivateState, unknown>;
 
@@ -27,7 +35,9 @@ export class RegistrySimulator {
     windowStart: bigint,
     windowEnd: bigint,
     witnessOverrides: Partial<WitnessSet> = {},
+    options: SimulatorOptions = {},
   ) {
+    this.address = options.address ?? sampleContractAddress();
     this.contract = new Contract<OnePledgePrivateState, WitnessSet>({ ...witnesses, ...witnessOverrides });
     const init = this.contract.initialState(
       createConstructorContext<OnePledgePrivateState>({ secretKey: registrarSecret }, COIN_PUBLIC_KEY),
@@ -36,11 +46,27 @@ export class RegistrySimulator {
       windowEnd,
     );
     this.context = createCircuitContext(
-      sampleContractAddress(),
+      this.address,
       init.currentZswapLocalState,
       init.currentContractState,
       init.currentPrivateState,
+      undefined,
+      undefined,
+      options.time,
     );
+  }
+
+  /** The address as the raw bytes the circuit reads through kernel.self(). */
+  addressBytes(): Uint8Array {
+    const hex = this.address.replace(/^0x/, '');
+    return Uint8Array.from(hex.match(/../g)!.map((b) => parseInt(b, 16)));
+  }
+
+  /** Move the simulated block time (unix seconds). */
+  setTime(unixSeconds: number): this {
+    const q = this.context.currentQueryContext;
+    q.block = { ...q.block, secondsSinceEpoch: BigInt(unixSeconds) };
+    return this;
   }
 
   /** Swap the acting party's private state (the ledger is shared). */

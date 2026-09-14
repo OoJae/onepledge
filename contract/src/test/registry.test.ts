@@ -231,11 +231,9 @@ describe('attestation forgery', () => {
     );
   });
 
-  it('rejects a signature made without the attestation domain separator', () => {
+  it('rejects a valid signature over a different digest', () => {
     const { w, inv } = pledged();
-    const a = inv.attestation;
-    const msg = pureCircuits.attestationMessage(a.tag, a.invoiceCommit, a.acceptanceDay, a.borrower);
-    const signature = sign(w.authority.sk, [0n, msg[1], msg[2], msg[3], msg[4]]);
+    const signature = sign(w.authority.sk, [12345n]);
     expect(tryPledge(w, withAttestation(inv, { signature }))).toThrow(/Invalid attestation signature/);
   });
 
@@ -429,11 +427,19 @@ describe('pure helpers', () => {
     expect(hex(pureCircuits.releaseNullifier(note, secret()))).not.toBe(hex(pureCircuits.releaseNullifier(note, secret())));
   });
 
-  it('starts every attestation message with the fixed domain separator', () => {
-    const msg = pureCircuits.attestationMessage(secret(), secret(), 20_000n, secret());
-    expect(msg).toHaveLength(5);
-    expect(msg[0]).toBe(pureCircuits.attestationDomain());
-    expect(msg[3]).toBe(20_000n);
+  it('reduces the whole attestation body to one digest that changes with every field', () => {
+    const [registry, tag, commit, borrower] = [secret(), secret(), secret(), secret()];
+    const base = pureCircuits.attestationMessage(registry, tag, commit, 20_000n, 1_800_000_000n, borrower);
+    expect(base).toHaveLength(1);
+    const variants = [
+      pureCircuits.attestationMessage(secret(), tag, commit, 20_000n, 1_800_000_000n, borrower),
+      pureCircuits.attestationMessage(registry, secret(), commit, 20_000n, 1_800_000_000n, borrower),
+      pureCircuits.attestationMessage(registry, tag, secret(), 20_000n, 1_800_000_000n, borrower),
+      pureCircuits.attestationMessage(registry, tag, commit, 20_001n, 1_800_000_000n, borrower),
+      pureCircuits.attestationMessage(registry, tag, commit, 20_000n, 1_800_086_400n, borrower),
+      pureCircuits.attestationMessage(registry, tag, commit, 20_000n, 1_800_000_000n, secret()),
+    ];
+    for (const v of variants) expect(v[0]).not.toBe(base[0]);
   });
 
   it('makes note commitments hiding: same pledge, different salt, unrelated commitments', () => {

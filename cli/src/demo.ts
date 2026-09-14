@@ -12,6 +12,7 @@
 import { randomBytes } from 'node:crypto';
 import { findDeployedContract } from '@midnight-ntwrk/midnight-js-contracts';
 import {
+  addressBytes,
   attest,
   invoiceCommitment,
   newSalt,
@@ -33,7 +34,7 @@ import {
   registryContract,
   writeDeployment,
 } from './providers.js';
-import { saveSnapshot, startWallet, walletSeed } from './wallet.js';
+import { startWallet, walletSeed } from './wallet.js';
 
 const network = selectNetwork();
 const log = (m: string) => console.log(`[${new Date().toISOString()}] ${m}`);
@@ -45,6 +46,15 @@ const ctx = await startWallet(await walletSeed(network), network);
 log('Waiting for wallet sync...');
 await ctx.wallet.waitForSyncedState();
 const providers: RegistryProviders = await configureProviders(ctx, network);
+// Time each proof on the local proof server.
+let lastProveSeconds: number | undefined;
+const proveTx = providers.proofProvider.proveTx.bind(providers.proofProvider);
+providers.proofProvider.proveTx = async (...args: Parameters<typeof proveTx>) => {
+  const started = performance.now();
+  const proven = await proveTx(...args);
+  lastProveSeconds = Math.round((performance.now() - started) / 100) / 10;
+  return proven;
+};
 // Private state is scoped per contract; bind the store to this deployment before writing to it.
 providers.privateStateProvider.setContractAddress(record.contractAddress);
 
@@ -60,10 +70,28 @@ const join = async (party: PartyId, state: OnePledgePrivateState) => {
   } as never) as Promise<{ callTx: Record<string, (...args: unknown[]) => Promise<{ public: TxPublic }>> }>;
 };
 
+let callStarted = performance.now();
+const startCall = () => {
+  callStarted = performance.now();
+  lastProveSeconds = undefined;
+};
+
 const note = (label: string, circuit: string, outcome: string, tx?: TxPublic) => {
-  record.events.push({ label, circuit, txId: tx?.txId, txHash: tx?.txHash, blockHeight: tx?.blockHeight, outcome, at: new Date().toISOString() });
+  const totalSeconds = tx ? Math.round((performance.now() - callStarted) / 100) / 10 : undefined;
+  record.events.push({
+    label,
+    circuit,
+    txId: tx?.txId,
+    txHash: tx?.txHash,
+    blockHeight: tx?.blockHeight,
+    outcome,
+    at: new Date().toISOString(),
+    proveSeconds: tx ? lastProveSeconds : undefined,
+    totalSeconds,
+  });
   writeDeployment(network, record);
-  log(`${label}: ${outcome}${tx ? ` (tx ${tx.txId}, block ${tx.blockHeight})` : ''}`);
+  const timing = tx ? `, proved in ${lastProveSeconds}s, finalized after ${totalSeconds}s` : '';
+  log(`${label}: ${outcome}${tx ? ` (tx hash ${tx.txHash}, block ${tx.blockHeight}${timing})` : ''}`);
 };
 
 const lenderKey = (s: Uint8Array) => Registry.pureCircuits.lenderKey(s);
@@ -80,6 +108,8 @@ const attestFor = (ksefNumber: string, amountGrosz: string) => {
   };
   const salt = newSalt();
   const attestation = attest(authority.sk, {
+    registry: addressBytes(record.contractAddress),
+    expiresAt: BigInt(Math.floor(Date.now() / 1000) + 7 * 86_400),
     tag: receivableTag(authority.tagSecret, parsed.canonical),
     invoiceCommit: invoiceCommitment(fields, salt),
     acceptanceDay: parsed.acceptanceDay,
@@ -96,6 +126,7 @@ const invoice2 = syntheticKsefNumber('5265877635', '2026-09-11', `02${suffix}`);
 // 1. Registrar admits both lenders.
 const registrar = await join('registrar', { secretKey: parties.registrar });
 for (const [label, secret] of [['lender A', parties.lenderA], ['lender B', parties.lenderB]] as const) {
+  startCall();
   const tx = await registrar.callTx.admitLender(lenderKey(secret));
   note(`Registrar admits ${label}`, 'admitLender', 'accepted', tx.public);
 }
@@ -109,6 +140,7 @@ const borrowerA = await join('borrower', {
   pledgeLender: lenderKey(parties.lenderA),
   noteSalt: noteSalt1,
 });
+startCall();
 const pledged = await borrowerA.callTx.pledge(lenderKey(parties.lenderA));
 note('Borrower pledges invoice 1 to lender A', 'pledge', 'accepted', pledged.public);
 
@@ -139,6 +171,7 @@ await providers.privateStateProvider.set('borrower', {
   pledgeLender: lenderKey(parties.lenderB),
   noteSalt: newSalt(),
 });
+startCall();
 const pledged2 = await borrowerA.callTx.pledge(lenderKey(parties.lenderB));
 note('Borrower pledges invoice 2 to lender B', 'pledge', 'accepted', pledged2.public);
 
@@ -147,10 +180,11 @@ const lenderA = await join('lenderA', {
   secretKey: parties.lenderA,
   releaseNote: { tag: att1.attestation.tag, invoiceCommit: att1.attestation.invoiceCommit, salt: noteSalt1 },
 });
+startCall();
 const released = await lenderA.callTx.release();
 note('Lender A releases invoice 1', 'release', 'accepted', released.public);
 
-await saveSnapshot(ctx, network);
+// No snapshot here: this run submitted transactions (see saveSnapshot).
 await ctx.wallet.stop();
 log('Demo complete.');
 process.exit(0);

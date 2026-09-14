@@ -14,11 +14,17 @@ import {
   syntheticKsefNumber,
   type InvoiceFields,
 } from '@onepledge/attester';
+import { sampleContractAddress } from '@midnight-ntwrk/compact-runtime';
 import { pureCircuits } from '../managed/registry/contract/index.js';
 import { type Attestation, type OnePledgePrivateState } from '../witnesses.js';
 import { RegistrySimulator } from '../simulator.js';
 
 export const secret = (): Uint8Array => new Uint8Array(randomBytes(32));
+
+/** Every test world runs at this address and block time unless a test says otherwise. */
+export const SIM_ADDRESS = sampleContractAddress();
+export const NOW = Date.UTC(2026, 8, 14, 12, 0, 0) / 1000;
+export const addressBytesOf = (hex: string) => Uint8Array.from(hex.match(/../g)!.map((b) => parseInt(b, 16)));
 
 export const WINDOW_START = BigInt(dayFromIso('2026-07-01'));
 export const WINDOW_END = BigInt(dayFromIso('2026-10-01'));
@@ -51,6 +57,7 @@ export const attestInvoice = (
   borrowerSecret: Uint8Array,
   ksefNumber: string,
   amountGrosz = '12500000',
+  options: { registry?: string; expiresAt?: bigint } = {},
 ): AttestedInvoice => {
   const parsed = parseKsefNumber(ksefNumber);
   const fields: InvoiceFields = {
@@ -63,6 +70,8 @@ export const attestInvoice = (
   };
   const salt = newSalt();
   const attestation = attest(authority.sk, {
+    registry: addressBytesOf(options.registry ?? SIM_ADDRESS),
+    expiresAt: options.expiresAt ?? BigInt(NOW + 30 * 86_400),
     tag: receivableTag(authority.tagSecret, parsed.canonical),
     invoiceCommit: invoiceCommitment(fields, salt),
     acceptanceDay: parsed.acceptanceDay,
@@ -84,7 +93,10 @@ export interface World {
 export const newWorld = (overrides: ConstructorParameters<typeof RegistrySimulator>[4] = {}): World => {
   const authority = newAuthority();
   const registrar = secret();
-  const sim = new RegistrySimulator(registrar, publicKeyOf(authority.sk), WINDOW_START, WINDOW_END, overrides);
+  const sim = new RegistrySimulator(registrar, publicKeyOf(authority.sk), WINDOW_START, WINDOW_END, overrides, {
+    address: SIM_ADDRESS,
+    time: NOW,
+  });
   const lenderA = secret();
   const lenderB = secret();
   sim.as({ secretKey: registrar });

@@ -104,6 +104,10 @@ export const configureProviders = async (ctx: WalletContext, network: NetworkCon
 
 export interface DeploymentRecord {
   network: string;
+  version?: string;
+  status?: string;
+  /** Who can replace the contract's verifier keys (the upgrade authority), as read from chain state. */
+  maintenanceAuthority?: { committeeSize: number; threshold: number; note: string };
   contractAddress: string;
   deployTxId: string;
   /** Transaction hash as used by the indexer and explorer (differs from the tx identifier). */
@@ -113,7 +117,19 @@ export interface DeploymentRecord {
   tagAuthority: { x: string; y: string };
   windowStart: number;
   windowEnd: number;
-  events: { label: string; circuit: string; txId?: string; txHash?: string; blockHeight?: number; outcome: string; at: string }[];
+  events: {
+    label: string;
+    circuit: string;
+    txId?: string;
+    txHash?: string;
+    blockHeight?: number;
+    outcome: string;
+    at: string;
+    /** Seconds spent generating the ZK proof on the local proof server. */
+    proveSeconds?: number;
+    /** Seconds from starting the call to the transaction being finalized on chain. */
+    totalSeconds?: number;
+  }[];
 }
 
 export const deploymentFile = (network: NetworkConfig) => path.join(deploymentsDir, `${network.name}.json`);
@@ -122,6 +138,17 @@ export const readDeployment = (network: NetworkConfig): DeploymentRecord => {
   const file = deploymentFile(network);
   if (!fs.existsSync(file)) throw new Error(`No deployment for ${network.name}. Run npm run deploy first.`);
   return JSON.parse(fs.readFileSync(file, 'utf8')) as DeploymentRecord;
+};
+
+export const archiveDeployment = (network: NetworkConfig, reason: string): string | undefined => {
+  const file = deploymentFile(network);
+  if (!fs.existsSync(file)) return undefined;
+  const old = JSON.parse(fs.readFileSync(file, 'utf8')) as DeploymentRecord;
+  const dir = path.join(deploymentsDir, 'archive');
+  fs.mkdirSync(dir, { recursive: true });
+  const target = path.join(dir, `${network.name}-${old.version ?? 'v1'}-${old.contractAddress.slice(0, 8)}.json`);
+  fs.writeFileSync(target, `${JSON.stringify({ ...old, status: `deprecated: ${reason}` }, null, 2)}\n`);
+  return target;
 };
 
 export const writeDeployment = (network: NetworkConfig, record: DeploymentRecord) => {

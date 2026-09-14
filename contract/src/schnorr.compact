@@ -5,7 +5,7 @@
 // (Copyright (C) 2025 Midnight Foundation, Apache-2.0). Public networks do not yet
 // ship `jubjubSchnorrVerify` (toolchain 0.32+/ledger 9), so this polyfill is used
 // until they do. Changes from upstream: the challenge helper is sized for the
-// OnePledge attestation message (5 fields).
+// OnePledge attestation message (one digest field).
 
 module schnorr {
   import CompactStandardLibrary;
@@ -43,18 +43,18 @@ module schnorr {
     // floor((BLS12-381 scalar prime - 1) / 2^248) == 115, so an honest quotient is
     // in [0, 115]. Bounding it stops a prover from choosing any challenge and
     // solving for a matching quotient modulo the field prime.
-    assert(disclose(q) < 116, "Schnorr quotient out of range");
-    assert(disclose(q) * TWO_248 + (disclose(cTruncated) as Field) == cFull, "Invalid challenge reduction");
-    const c: Field = disclose(cTruncated) as Field;
+    assert(q < 116, "Schnorr quotient out of range");
+    assert(q * TWO_248 + (cTruncated as Field) == cFull, "Invalid challenge reduction");
+    const c: Field = cTruncated as Field;
     const lhs: JubjubPoint = ecMulGenerator(response);
     const rhs: JubjubPoint = ecAdd(announcement, ecMul(pk, c));
     assert(jubjubPointX(lhs) == jubjubPointX(rhs) && jubjubPointY(lhs) == jubjubPointY(rhs),
            "Invalid attestation signature");
   }
 
-  export pure circuit schnorrChallenge5(ann_x: Field, ann_y: Field, pk_x: Field, pk_y: Field,
-                                        msg: Vector<5, Field>): Field {
-    return transientHash<SchnorrHashInput<5>>(
-      SchnorrHashInput<5> { ann_x: ann_x, ann_y: ann_y, pk_x: pk_x, pk_y: pk_y, msg: msg });
+  export pure circuit schnorrChallenge1(ann_x: Field, ann_y: Field, pk_x: Field, pk_y: Field,
+                                        msg: Vector<1, Field>): Field {
+    return transientHash<SchnorrHashInput<1>>(
+      SchnorrHashInput<1> { ann_x: ann_x, ann_y: ann_y, pk_x: pk_x, pk_y: pk_y, msg: msg });
   }
 }

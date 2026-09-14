@@ -13,6 +13,8 @@ export type Attestation = {
   tag: Uint8Array;
   invoiceCommit: Uint8Array;
   acceptanceDay: bigint;
+  /** Unix seconds (a whole UTC day); the pledge fails once the block time reaches it. */
+  expiresAt: bigint;
   borrower: Uint8Array;
   signature: SchnorrSignature;
 };

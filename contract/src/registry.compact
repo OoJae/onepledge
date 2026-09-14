@@ -1,5 +1,5 @@
 // SPDX-License-Identifier: Apache-2.0
-// OnePledge Registry, Wave 1 (v0).
+// OnePledge Registry, Wave 1 (v2).
 //
 // One pledge per receivable, across rival lenders, without any lender seeing another's book.
 //
@@ -11,9 +11,16 @@
 //   - The attestation is bound to the borrower's key, so a leaked attestation cannot be
 //     front-run by someone else.
 //
+//   - Each attestation is bound to one deployment (this contract's address) and expires.
+//
 // What the public ledger learns from a pledge: the tag T, an opaque note commitment, the
-// historic lender-registry root used, and the pledge count. It never learns the invoice
-// fields, the amount, the borrower, or which lender financed it.
+// historic lender-registry root used, the attestation's expiry (a whole UTC day), and the
+// pledge count. It never learns the invoice fields, the amount, the borrower, or which
+// lender financed it.
+//
+// v2 security fix: v1 signed degradeToTransient(tag), which keeps only 248 of the tag's 256
+// bits, so one attestation could be pledged again with a different last byte. v2 signs a
+// SHA-256 digest of the full attestation body instead. See docs/security-review.md.
 
 pragma language_version >= 0.22 && <= 0.23;
 import CompactStandardLibrary;
@@ -21,20 +28,27 @@ import "schnorr" prefix Schnorr_;
 
 export { Schnorr_SchnorrSignature };
 
-// What the tag authority signs. `invoiceCommit` commits to the invoice fields (amount,
-// debtor, due date) with a salt; only the financing lender receives the opening.
+// What the tag authority hands a borrower. `invoiceCommit` commits to the invoice fields
+// (amount, debtor, due date) with a salt; only the financing lender receives the opening.
 export struct Attestation {
   tag: Bytes<32>;
   invoiceCommit: Bytes<32>;
   acceptanceDay: Uint<32>;
+  expiresAt: Uint<64>;
   borrower: Bytes<32>;
   signature: Schnorr_SchnorrSignature;
 }
 
-// Domain separator carried in every signed message, so a signature made for another
-// purpose (or another protocol version) can never verify here.
-export pure circuit attestationDomain(): Field {
-  return degradeToTransient(persistentHash<Bytes<32>>(pad(32, "onepledge:attest:v1")));
+// The exact byte string the tag authority signs (as one SHA-256 digest). Every field is
+// hashed whole, so no bit of any field can change without invalidating the signature.
+export struct AttestationBody {
+  domain: Bytes<32>;
+  registry: Bytes<32>;
+  tag: Bytes<32>;
+  invoiceCommit: Bytes<32>;
+  acceptanceDay: Uint<32>;
+  expiresAt: Uint<64>;
+  borrower: Bytes<32>;
 }
 
 // Registrar: admits lenders. Identity comes from a witness secret, never ownPublicKey().
@@ -66,10 +80,15 @@ witness getNotePath(): MerkleTreePath<16, Bytes<32>>;
 
 constructor(authority: JubjubPoint, start: Uint<32>, end: Uint<32>) {
   assert(start < end, "Empty acceptance window");
+  assert(!isIdentity(authority), "Tag authority key is the identity point");
   registrar = disclose(registrarKey(localSecretKey()));
   tagAuthority = disclose(authority);
   windowStart = disclose(start);
   windowEnd = disclose(end);
+}
+
+pure circuit isIdentity(p: JubjubPoint): Boolean {
+  return jubjubPointX(p) == 0 && jubjubPointY(p) == 1;
 }
 
 export pure circuit registrarKey(sk: Bytes<32>): Bytes<32> {
@@ -93,21 +112,27 @@ export pure circuit releaseNullifier(note: Bytes<32>, lenderSecret: Bytes<32>): 
   return persistentHash<Vector<3, Bytes<32>>>([pad(32, "onepledge:release:v1"), note, lenderSecret]);
 }
 
-// The exact message the tag authority signs.
-export pure circuit attestationMessage(tag: Bytes<32>, invoiceCommit: Bytes<32>, acceptanceDay: Uint<32>,
-                                       borrower: Bytes<32>): Vector<5, Field> {
-  return [
-    attestationDomain(),
-    degradeToTransient(tag),
-    degradeToTransient(invoiceCommit),
-    acceptanceDay as Field,
-    degradeToTransient(borrower)
-  ];
+// The one-field message the tag authority signs: a SHA-256 digest of the whole body, reduced
+// to a Field. The digest keeps 248 of its 256 bits, which is fine for a hash output; v1's bug
+// was truncating the raw tag, not a digest of it.
+export pure circuit attestationMessage(registry: Bytes<32>, tag: Bytes<32>, invoiceCommit: Bytes<32>,
+                                       acceptanceDay: Uint<32>, expiresAt: Uint<64>,
+                                       borrower: Bytes<32>): Vector<1, Field> {
+  const body = AttestationBody {
+    domain: pad(32, "onepledge:attest:v2"),
+    registry: registry,
+    tag: tag,
+    invoiceCommit: invoiceCommit,
+    acceptanceDay: acceptanceDay,
+    expiresAt: expiresAt,
+    borrower: borrower
+  };
+  return [degradeToTransient(persistentHash<AttestationBody>(body))];
 }
 
 export pure circuit schnorrChallenge(ann_x: Field, ann_y: Field, pk_x: Field, pk_y: Field,
-                                     msg: Vector<5, Field>): Field {
-  return Schnorr_schnorrChallenge5(ann_x, ann_y, pk_x, pk_y, msg);
+                                     msg: Vector<1, Field>): Field {
+  return Schnorr_schnorrChallenge1(ann_x, ann_y, pk_x, pk_y, msg);
 }
 
 // Registrar admits a lender by its key commitment (lenderKey(lenderSecret)).
@@ -122,36 +147,41 @@ export circuit rotateRegistrar(next: Bytes<32>): [] {
 }
 
 // Borrower pledges an attested receivable to an admitted lender.
-// Runs with the borrower's secret, the attestation, and the lender's key and registry path
-// (handed over by the lender off-chain). Returns the note commitment.
+// Runs with the borrower's secret, the attestation, and the lender's public key (the registry
+// path is read from the public lender tree). Returns the note commitment.
 export circuit pledge(lender: Bytes<32>): Bytes<32> {
   const att = getAttestation();
 
   // 1. The attestation belongs to this borrower (anti-front-running).
   assert(att.borrower == borrowerKey(localSecretKey()), "Attestation is bound to a different borrower");
 
-  // 2. The tag authority signed exactly these fields.
-  Schnorr_schnorrVerify<5>(
-    attestationMessage(att.tag, att.invoiceCommit, att.acceptanceDay, att.borrower),
+  // 2. The tag authority signed exactly these fields, for this registry.
+  assert(!isIdentity(tagAuthority), "Tag authority key is the identity point");
+  Schnorr_schnorrVerify<1>(
+    attestationMessage(kernel.self().bytes, att.tag, att.invoiceCommit, att.acceptanceDay, att.expiresAt,
+                       att.borrower),
     att.signature,
     tagAuthority);
 
-  // 3. The invoice falls inside this deployment's acceptance window. Both comparisons are true
-  //    in every successful pledge, so disclosing them reveals nothing beyond "in window".
-  assert(disclose(att.acceptanceDay >= windowStart), "Invoice accepted before this registry's window");
-  assert(disclose(att.acceptanceDay < windowEnd), "Invoice accepted after this registry's window");
+  // 3. The attestation has not expired. The expiry is a public argument to the block-time check.
+  assert(blockTimeLt(disclose(att.expiresAt)), "Attestation expired");
 
-  // 4. The lender is admitted, proven against a historic registry root without revealing it.
+  // 4. The invoice falls inside this deployment's acceptance window. Assert conditions are
+  //    proven, not published.
+  assert(att.acceptanceDay >= windowStart, "Invoice accepted before this registry's window");
+  assert(att.acceptanceDay < windowEnd, "Invoice accepted after this registry's window");
+
+  // 5. The lender is admitted, proven against a historic registry root without revealing it.
   const lenderPath = getLenderPath();
   assert(lenderPath.leaf == lender, "Lender path does not match the lender");
   assert(lenders.checkRoot(disclose(merkleTreePathRoot<10, Bytes<32>>(lenderPath))), "Lender is not admitted");
 
-  // 5. One pledge per receivable, forever.
+  // 6. One pledge per receivable, forever.
   const tag = disclose(att.tag);
   assert(!tags.member(tag), "Receivable already pledged");
   tags.insert(tag);
 
-  // 6. Record a note only the lender of record can later release.
+  // 7. Record a note only the lender of record can later release.
   const note = disclose(noteCommitment(att.tag, lender, att.invoiceCommit, getNoteSalt()));
   notes.insert(note);
   pledgeCount.increment(1);

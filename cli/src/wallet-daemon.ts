@@ -32,7 +32,7 @@ const tick = async () => {
   const { night, dust } = balances(latest);
   log(`${syncSummary(latest)} | NIGHT=${night} DUST=${dust}`);
   try {
-    await saveSnapshot(ctx, network);
+    if (!(await saveSnapshot(ctx, network))) log('Snapshot skipped (not synced yet, or transactions pending).');
   } catch (e) {
     log(`Snapshot failed: ${(e as Error).message}`);
   }
@@ -53,8 +53,8 @@ setTimeout(() => void tick(), 15_000);
 
 const shutdown = async () => {
   clearInterval(timer);
-  log('Stopping: saving snapshot...');
-  await saveSnapshot(ctx, network).catch(() => undefined);
+  log('Stopping: saving snapshot if safe...');
+  await saveSnapshot(ctx, network).catch(() => false);
   await ctx.wallet.stop();
   process.exit(0);
 };

@@ -4,9 +4,18 @@
 import { deployContract } from '@midnight-ntwrk/midnight-js-contracts';
 import { dayFromIso } from '@onepledge/attester';
 import { selectNetwork } from './config.js';
-import { configureProviders, loadParties, loadTagAuthority, registryContract, writeDeployment } from './providers.js';
+import fs from 'node:fs';
+import {
+  archiveDeployment,
+  configureProviders,
+  deploymentFile,
+  loadParties,
+  loadTagAuthority,
+  registryContract,
+  writeDeployment,
+} from './providers.js';
 import * as Rx from 'rxjs';
-import { balances, registerNightForDust, saveSnapshot, startWallet, syncSummary, walletSeed } from './wallet.js';
+import { balances, registerNightForDust, startWallet, syncSummary, walletSeed } from './wallet.js';
 
 const network = selectNetwork();
 const log = (m: string) => console.log(`[${new Date().toISOString()}] ${m}`);
@@ -14,6 +23,12 @@ const log = (m: string) => console.log(`[${new Date().toISOString()}] ${m}`);
 // Registry v1 accepts invoices KSeF accepted between 2026-07-01 and 2027-01-01 (exclusive).
 const WINDOW_START = dayFromIso(process.env.WINDOW_START ?? '2026-07-01');
 const WINDOW_END = dayFromIso(process.env.WINDOW_END ?? '2027-01-01');
+
+// Never silently replace the recorded deployment: judges and the Live page read it.
+if (fs.existsSync(deploymentFile(network)) && process.env.FORCE !== '1') {
+  log(`${deploymentFile(network)} already exists. Re-run with FORCE=1 (and DEPRECATE_REASON="...") to archive it and deploy anew.`);
+  process.exit(1);
+}
 
 const ctx = await startWallet(await walletSeed(network), network);
 log('Waiting for wallet sync (restored from snapshot when available)...');
@@ -49,8 +64,22 @@ const pub = (deployed as { deployTxData: { public: { contractAddress: string; tx
   .deployTxData.public;
 log(`Deployed at ${pub.contractAddress} in tx ${pub.txId} (block ${pub.blockHeight})`);
 
+const onChain = await providers.publicDataProvider.queryContractState(pub.contractAddress);
+const authorityInfo = onChain?.maintenanceAuthority;
+const archived = archiveDeployment(network, process.env.DEPRECATE_REASON ?? 'superseded by a new deployment');
+if (archived) log(`Archived the previous record to ${archived}`);
+
 writeDeployment(network, {
   network: network.name,
+  version: 'v2',
+  status: 'active',
+  maintenanceAuthority: authorityInfo
+    ? {
+        committeeSize: authorityInfo.committee.length,
+        threshold: authorityInfo.threshold,
+        note: 'Deployer-held upgrade key: can insert or remove verifier keys. Planned: 2-of-3 committee, then frozen.',
+      }
+    : undefined,
   contractAddress: pub.contractAddress,
   deployTxId: pub.txId,
   deployTxHash: pub.txHash,
@@ -62,6 +91,6 @@ writeDeployment(network, {
   events: [],
 });
 
-await saveSnapshot(ctx, network);
+// No snapshot here: this run submitted transactions (see saveSnapshot).
 await ctx.wallet.stop();
 process.exit(0);

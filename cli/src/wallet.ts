@@ -24,6 +24,7 @@ import {
   PublicKey as UnshieldedPublicKey,
   type UnshieldedKeystore,
 } from '@midnight-ntwrk/wallet-sdk';
+import { PendingTransactions } from '@midnight-ntwrk/wallet-sdk-capabilities';
 import { type NetworkConfig, secretsDir } from './config.js';
 
 // @ts-expect-error: the indexer client uses the global WebSocket
@@ -88,25 +89,38 @@ export const deriveKeys = async (seed: Buffer, network: NetworkConfig): Promise<
   };
 };
 
-type Snapshot = { shielded: string; unshielded: string; dust: string };
+/** Each sub-wallet restores independently; a missing part starts fresh and syncs from the chain. */
+type Snapshot = Partial<{ shielded: string; unshielded: string; dust: string }>;
 
 const readSnapshot = (network: NetworkConfig): Snapshot | undefined => {
   const file = snapshotPath(network);
   if (!fs.existsSync(file)) return undefined;
   try {
     return JSON.parse(fs.readFileSync(file, 'utf8')) as Snapshot;
-  } catch {
+  } catch (e) {
+    console.warn(`Ignoring unreadable wallet snapshot ${file}: ${(e as Error).message}`);
     return undefined;
   }
 };
 
-export const saveSnapshot = async (ctx: WalletContext, network: NetworkConfig): Promise<void> => {
+/**
+ * Save the wallet state, but only when it is safe to resume from: fully synced and with no
+ * transactions of our own still pending. A snapshot taken right after submitting a transaction
+ * holds optimistic local state that the indexer later replays, which corrupts the next restore.
+ * The previous snapshot is kept as `.bak`.
+ */
+export const saveSnapshot = async (ctx: WalletContext, network: NetworkConfig): Promise<boolean> => {
+  const state = await Rx.firstValueFrom(ctx.wallet.state());
+  if (!state.isSynced || PendingTransactions.all(state.pending).length > 0) return false;
   const [shielded, unshielded, dust] = await Promise.all([
     ctx.wallet.shielded.serializeState(),
     ctx.wallet.unshielded.serializeState(),
     ctx.wallet.dust.serializeState(),
   ]);
-  writePrivate(snapshotPath(network), JSON.stringify({ shielded, unshielded, dust }));
+  const file = snapshotPath(network);
+  if (fs.existsSync(file)) fs.copyFileSync(file, `${file}.bak`);
+  writePrivate(file, JSON.stringify({ shielded, unshielded, dust }));
+  return true;
 };
 
 export const startWallet = async (
@@ -142,15 +156,15 @@ export const startWallet = async (
   const wallet = await WalletFacade.init({
     configuration: { ...shieldedConfig, ...unshieldedConfig, ...dustConfig },
     shielded: () =>
-      snapshot
+      snapshot?.shielded
         ? ShieldedWallet(shieldedConfig).restore(snapshot.shielded)
         : ShieldedWallet(shieldedConfig).startWithSecretKeys(keys.shieldedSecretKeys),
     unshielded: () =>
-      snapshot
+      snapshot?.unshielded
         ? UnshieldedWallet(unshieldedConfig).restore(snapshot.unshielded)
         : UnshieldedWallet(unshieldedConfig).startWithPublicKey(UnshieldedPublicKey.fromKeyStore(keys.unshieldedKeystore)),
     dust: () =>
-      snapshot
+      snapshot?.dust
         ? DustWallet(dustConfig).restore(snapshot.dust)
         : DustWallet(dustConfig).startWithSecretKey(keys.dustSecretKey, dustParams),
   });

@@ -3,9 +3,19 @@ import type * as __compactRuntime from '@midnight-ntwrk/compact-runtime';
 export type Attestation = { tag: Uint8Array;
                             invoiceCommit: Uint8Array;
                             acceptanceDay: bigint;
+                            expiresAt: bigint;
                             borrower: Uint8Array;
                             signature: Schnorr_SchnorrSignature
                           };
+
+export type AttestationBody = { domain: Uint8Array;
+                                registry: Uint8Array;
+                                tag: Uint8Array;
+                                invoiceCommit: Uint8Array;
+                                acceptanceDay: bigint;
+                                expiresAt: bigint;
+                                borrower: Uint8Array
+                              };
 
 export type Schnorr_SchnorrSignature = { announcement: __compactRuntime.JubjubPoint;
                                          response: bigint
@@ -51,7 +61,6 @@ export type ProvableCircuits<PS> = {
 }
 
 export type PureCircuits = {
-  attestationDomain(): bigint;
   registrarKey(sk_0: Uint8Array): Uint8Array;
   borrowerKey(sk_0: Uint8Array): Uint8Array;
   lenderKey(sk_0: Uint8Array): Uint8Array;
@@ -60,9 +69,11 @@ export type PureCircuits = {
                  invoiceCommit_0: Uint8Array,
                  salt_0: Uint8Array): Uint8Array;
   releaseNullifier(note_0: Uint8Array, lenderSecret_0: Uint8Array): Uint8Array;
-  attestationMessage(tag_0: Uint8Array,
+  attestationMessage(registry_0: Uint8Array,
+                     tag_0: Uint8Array,
                      invoiceCommit_0: Uint8Array,
                      acceptanceDay_0: bigint,
+                     expiresAt_0: bigint,
                      borrower_0: Uint8Array): bigint[];
   schnorrChallenge(ann_x_0: bigint,
                    ann_y_0: bigint,
@@ -72,7 +83,6 @@ export type PureCircuits = {
 }
 
 export type Circuits<PS> = {
-  attestationDomain(context: __compactRuntime.CircuitContext<PS>): __compactRuntime.CircuitResults<PS, bigint>;
   registrarKey(context: __compactRuntime.CircuitContext<PS>, sk_0: Uint8Array): __compactRuntime.CircuitResults<PS, Uint8Array>;
   borrowerKey(context: __compactRuntime.CircuitContext<PS>, sk_0: Uint8Array): __compactRuntime.CircuitResults<PS, Uint8Array>;
   lenderKey(context: __compactRuntime.CircuitContext<PS>, sk_0: Uint8Array): __compactRuntime.CircuitResults<PS, Uint8Array>;
@@ -85,9 +95,11 @@ export type Circuits<PS> = {
                    note_0: Uint8Array,
                    lenderSecret_0: Uint8Array): __compactRuntime.CircuitResults<PS, Uint8Array>;
   attestationMessage(context: __compactRuntime.CircuitContext<PS>,
+                     registry_0: Uint8Array,
                      tag_0: Uint8Array,
                      invoiceCommit_0: Uint8Array,
                      acceptanceDay_0: bigint,
+                     expiresAt_0: bigint,
                      borrower_0: Uint8Array): __compactRuntime.CircuitResults<PS, bigint[]>;
   schnorrChallenge(context: __compactRuntime.CircuitContext<PS>,
                    ann_x_0: bigint,

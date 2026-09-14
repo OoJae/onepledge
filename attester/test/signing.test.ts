@@ -16,7 +16,7 @@ const verify = (pk: { x: bigint; y: bigint }, msg: bigint[], sig: ReturnType<typ
   return lhs.x === rhs.x && lhs.y === rhs.y;
 };
 
-const msg = () => [1n, 2n, 3n, 4n, 5n];
+const msg = () => [123456789n];
 
 describe('Schnorr signer', () => {
   it('produces signatures that satisfy the verification equation', () => {
@@ -43,11 +43,11 @@ describe('Schnorr signer', () => {
     const sk = randomScalar();
     const sig = sign(sk, msg());
     expect(verify(publicKeyOf(randomScalar()), msg(), sig)).toBe(false);
-    expect(verify(publicKeyOf(sk), [1n, 2n, 3n, 4n, 6n], sig)).toBe(false);
+    expect(verify(publicKeyOf(sk), [123456790n], sig)).toBe(false);
   });
 
-  it('only signs 5-field attestation messages', () => {
-    expect(() => sign(randomScalar(), [1n, 2n])).toThrow(/exactly 5 fields/);
+  it('only signs one-field digest messages', () => {
+    expect(() => sign(randomScalar(), [1n, 2n])).toThrow(/exactly one digest field/);
   });
 
   it('draws scalars in [1, order)', () => {

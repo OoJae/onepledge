@@ -71,6 +71,8 @@ export class Walkthrough {
   attestFresh(): Attestation {
     const parsed = parseKsefNumber(this.invoice.ksefNumber);
     return attest(this.authority.sk, {
+      registry: this.sim.addressBytes(),
+      expiresAt: BigInt(Math.floor(Date.now() / 1000) + 365 * 86_400),
       tag: receivableTag(this.authority.tagSecret, parsed.canonical),
       invoiceCommit: invoiceCommitment(this.invoice, this.invoiceSalt),
       acceptanceDay: parsed.acceptanceDay,
