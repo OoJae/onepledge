@@ -1,5 +1,5 @@
 // SPDX-License-Identifier: Apache-2.0
-import { useMemo, useState } from 'react';
+import { useEffect, useMemo, useRef, useState } from 'react';
 import { Walkthrough, hex, short, type Outcome } from '../engine.ts';
 
 type Step = 'start' | 'pledged' | 'doubled' | 'released';
@@ -14,6 +14,16 @@ export function Story() {
   const [noteSalt, setNoteSalt] = useState<Uint8Array | null>(null);
   const [, force] = useState(0);
   const view = useMemo(() => run.publicView(), [run, step, log]);
+  const buttons = [useRef<HTMLButtonElement>(null), useRef<HTMLButtonElement>(null), useRef<HTMLButtonElement>(null), useRef<HTMLButtonElement>(null)];
+  const logRef = useRef<HTMLElement>(null);
+
+  // Keep keyboard focus on the next action after a button disables itself.
+  useEffect(() => {
+    const next = { start: 0, pledged: 1, doubled: 2, released: 3 }[step];
+    if (log.length > 0) buttons[next].current?.focus();
+    if (log.length > 0 && window.matchMedia('(max-width: 860px)').matches) logRef.current?.scrollIntoView({ block: 'nearest' });
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [step, log.length]);
 
   const push = (label: string, outcome: Outcome) => {
     setLog((l) => [...l, { label, outcome }]);
@@ -51,7 +61,7 @@ export function Story() {
     <>
       <section className="hero">
         <p className="eyebrow">Receivables finance · Poland's KSeF e-invoicing</p>
-        <h1>One invoice. Two lenders. Only one gets to finance it.</h1>
+        <h1 tabIndex={-1}>One invoice. Two lenders. Only one gets to finance it.</h1>
         <p className="lede">
           Double-pledging the same invoice to several lenders is one of the oldest frauds in trade finance. Lenders
           could stop it by pooling their books, but no lender will show a rival its clients. OnePledge lets the
@@ -73,10 +83,10 @@ export function Story() {
       </section>
 
       <section className="actions">
-        <button onClick={pledgeA} disabled={step !== 'start'}>1 · Pledge to Lender A</button>
-        <button onClick={pledgeB} disabled={step !== 'pledged'} className="danger">2 · Try it again at Lender B</button>
-        <button onClick={release} disabled={step !== 'doubled'}>3 · Lender A releases (paid)</button>
-        <button onClick={reset} className="ghost">Start over</button>
+        <button ref={buttons[0]} onClick={pledgeA} disabled={step !== 'start'}>1 · Pledge to Lender A</button>
+        <button ref={buttons[1]} onClick={pledgeB} disabled={step !== 'pledged'} className="danger">2 · Try it again at Lender B</button>
+        <button ref={buttons[2]} onClick={release} disabled={step !== 'doubled'}>3 · Lender A releases (paid)</button>
+        <button ref={buttons[3]} onClick={reset} className="ghost">Start over</button>
       </section>
 
       <section className="columns">
@@ -99,8 +109,8 @@ export function Story() {
           <p className="role">Asked to finance the same invoice</p>
           {step === 'doubled' || step === 'released' ? (
             <ul className="seen">
-              <li><span className="yes">Sees</span> one fact: the registry refused, because this invoice is <strong>already pledged</strong></li>
-              <li><span className="yes">Can check</span> before funding, on its own machine, against the public tag set. Nobody learns it asked. Currently: {run.encumbered() ? 'encumbered' : 'free'}</li>
+              <li><span className="yes">Learns</span> one fact: this invoice is <strong>already pledged</strong>. The borrower's circuit refused before any proof was made.</li>
+              <li><span className="yes">Can check</span> before funding: verify the attestation, then look its tag up in the public set on its own machine. Status: {run.encumbered() ? (step === 'released' ? 'pledged (tags are permanent)' : 'encumbered') : 'free'}</li>
               <li><span className="no">Never sees</span> which lender, how much, or the terms</li>
             </ul>
           ) : (
@@ -123,12 +133,12 @@ export function Story() {
         </article>
       </section>
 
-      <section className="card">
+      <section className="card" ref={logRef}>
         <h2>Circuit log</h2>
         {log.length === 0 ? (
           <p className="muted">Each button runs the compiled Compact circuit. Results appear here.</p>
         ) : (
-          <ol className="log">
+          <ol className="log" aria-live="polite">
             {log.map((entry, i) => (
               <li key={i} className={entry.outcome.ok ? 'ok' : 'rejected'}>
                 <span className="badge">{entry.outcome.ok ? 'accepted' : 'rejected'}</span>

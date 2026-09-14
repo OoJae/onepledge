@@ -5,6 +5,10 @@ import { fileURLToPath } from 'node:url';
 import { defineConfig } from 'vite';
 import react from '@vitejs/plugin-react';
 import wasm from 'vite-plugin-wasm';
+import vercel from './vercel.json' with { type: 'json' };
+
+// `vite preview` serves the same security headers as the hosted site, so the CSP is tested locally.
+const hostedHeaders = Object.fromEntries(vercel.headers[0].headers.map((h) => [h.key, h.value]));
 
 export default defineConfig(({ mode }) => ({
   base: './',
@@ -16,10 +20,14 @@ export default defineConfig(({ mode }) => ({
   resolve: {
     alias: { 'isomorphic-ws': fileURLToPath(new URL('./src/isomorphic-ws.ts', import.meta.url)) },
   },
-  optimizeDeps: {
-    esbuildOptions: { define: { global: 'globalThis' }, target: 'esnext' },
-    exclude: ['@midnight-ntwrk/onchain-runtime-v3'],
-  },
+  optimizeDeps: { exclude: ['@midnight-ntwrk/onchain-runtime-v3'] },
   build: { target: 'esnext', commonjsOptions: { transformMixedEsModules: true } },
-  server: { fs: { allow: ['..'] } },
+  preview: { headers: hostedHeaders },
+  server: {
+    fs: {
+      // Only what the app imports: its own sources, workspace packages, dependencies and the deployment record.
+      allow: ['.', '../contract', '../attester', '../deployments', '../node_modules'],
+      deny: ['.env', '.env.*', '*.{crt,pem}', '**/.git/**', '**/.secrets/**', '**/midnight-level-db/**'],
+    },
+  },
 }));

@@ -1,13 +1,15 @@
 // SPDX-License-Identifier: Apache-2.0
-import { useEffect, useState } from 'react';
-import { Story } from './pages/Story.tsx';
-import { Attack } from './pages/Attack.tsx';
-import { Live } from './pages/Live.tsx';
+import { Suspense, lazy, useEffect, useRef, useState } from 'react';
+
+// Pages load on demand, so the ledger WASM is fetched only by the pages that use it.
+const Story = lazy(() => import('./pages/Story.tsx').then((m) => ({ default: m.Story })));
+const Attack = lazy(() => import('./pages/Attack.tsx').then((m) => ({ default: m.Attack })));
+const Live = lazy(() => import('./pages/Live.tsx').then((m) => ({ default: m.Live })));
 
 const routes = {
-  '#/': { label: 'The story', page: Story },
-  '#/attack': { label: 'Why not a hash registry', page: Attack },
-  '#/live': { label: 'Live registry', page: Live },
+  '#/': { label: 'The story', title: 'OnePledge · one invoice, one pledge', page: Story },
+  '#/attack': { label: 'Why not a hash registry', title: 'OnePledge · why not a hash registry', page: Attack },
+  '#/live': { label: 'Live registry', title: 'OnePledge · live on Midnight Preprod', page: Live },
 } as const;
 
 type Route = keyof typeof routes;
@@ -22,6 +24,27 @@ export function App() {
     return () => window.removeEventListener('hashchange', onHash);
   }, []);
   const Page = routes[route].page;
+  const main = useRef<HTMLElement>(null);
+  const firstRender = useRef(true);
+
+  useEffect(() => {
+    document.title = routes[route].title;
+    if (firstRender.current) {
+      firstRender.current = false;
+      return;
+    }
+    // Move focus to the new page's heading once it has loaded, so screen readers announce the change.
+    let tries = 0;
+    const timer = window.setInterval(() => {
+      const heading = main.current?.querySelector<HTMLElement>(`[data-route="${route}"] h1`);
+      if (heading || ++tries > 40) {
+        window.clearInterval(timer);
+        heading?.focus();
+        window.scrollTo(0, 0);
+      }
+    }, 50);
+    return () => window.clearInterval(timer);
+  }, [route]);
 
   return (
     <div className="shell">
@@ -38,8 +61,12 @@ export function App() {
           ))}
         </nav>
       </header>
-      <main>
-        <Page />
+      <main ref={main}>
+        <Suspense fallback={<p className="muted" role="status">Loading…</p>}>
+          <div data-route={route}>
+            <Page />
+          </div>
+        </Suspense>
       </main>
       <footer className="footer">
         <span>Built on Midnight · Compact 0.31.1 · Apache-2.0</span>

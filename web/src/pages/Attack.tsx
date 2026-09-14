@@ -1,7 +1,8 @@
 // SPDX-License-Identifier: Apache-2.0
 import { useMemo, useState } from 'react';
 import { KsefNumberError, parseKsefNumber, receivableTag } from '@onepledge/attester';
-import { randomBytes } from '@noble/hashes/utils.js';
+import { randomBytes, utf8ToBytes } from '@noble/hashes/utils.js';
+import { sha256 } from '@noble/hashes/sha2.js';
 import { NaiveRegistry, reformat, type NaiveInvoice } from '../naive.ts';
 import { Walkthrough, hex, short } from '../engine.ts';
 
@@ -17,7 +18,7 @@ export function Attack() {
     <>
       <section className="hero">
         <p className="eyebrow">Why not just publish a hash of each financed invoice?</p>
-        <h1>A public hash registry fails twice.</h1>
+        <h1 tabIndex={-1}>A public hash registry fails twice.</h1>
         <p className="lede">
           The obvious design stores <span className="mono">sha256(invoice number, supplier, amount, due date)</span> on
           a public chain and rejects repeats. It is easy to bypass, and it tells anyone who holds an invoice whether it
@@ -94,7 +95,7 @@ function Snooping() {
     const invoices: NaiveInvoice[] = Array.from({ length: 40 }, (_, i) => ({
       invoiceNo: `FV/2026/09/${String(400 + i).padStart(4, '0')}`,
       supplier: 'PL5265877635',
-      amount: `${(40 + ((i * 37) % 90)) * 1000}.00`,
+      amount: i === 12 ? '125000.00' : `${(40 + ((i * 37) % 90)) * 1000}.00`,
       dueDate: '2026-11-30',
     }));
     invoices.forEach((inv, i) => {
@@ -114,16 +115,23 @@ function Snooping() {
   };
 
   const snoopOnePledge = () => {
-    const authorityKey = randomBytes(32);
-    const attackerKey = randomBytes(32);
-    const knownNumber = '5265877635-20250826-0100001AF629-AF';
-    const realTag = receivableTag(authorityKey, knownNumber);
-    const guessed = receivableTag(attackerKey, knownNumber);
+    // A real registry: pledge one invoice, then attack its public tag set.
+    const run = new Walkthrough();
+    const pledged = run.pledgeTo('A');
+    const tags = run.sim.ledger().tags;
+    const knownNumber = run.invoice.ksefNumber;
+    const GUESSES = 1000;
+    let matches = 0;
+    for (let i = 0; i < GUESSES; i++) {
+      if (tags.member(receivableTag(randomBytes(32), knownNumber))) matches += 1;
+    }
+    const naive = tags.member(sha256(utf8ToBytes(knownNumber)));
     setOnePledge([
-      `Attacker holds the invoice number ${knownNumber}`,
-      `Tag the registry would store: ${short(hex(realTag))}`,
-      `Best the attacker can compute without the authority key: ${short(hex(guessed))}`,
-      'Matches: 0. The public set is opaque to anyone who only knows invoice numbers.',
+      `Registry holds ${tags.size()} pledged tag (${pledged.ok ? 'pledge accepted' : pledged.detail})`,
+      `Attacker knows the invoice number ${knownNumber}`,
+      `Plain hash of the number found in the tag set: ${naive ? 'yes' : 'no'}`,
+      `Tags computed under ${GUESSES.toLocaleString()} guessed keys found in the tag set: ${matches}`,
+      `A lender the borrower handed the real tag looks it up: ${tags.member(run.attestation.tag) ? 'pledged' : 'not pledged'}. Tag-holders can watch a tag; people who only know invoice numbers cannot.`,
     ]);
   };
 
@@ -144,14 +152,14 @@ function Snooping() {
         <h2>Same attack on OnePledge</h2>
         <p className="role">Keyed tags</p>
         <p className="muted small">
-          Tags are HMAC-SHA256 under the tag authority's secret. Knowing an invoice number does not let you find it in
-          the public set. A prospective lender gets the tag from the borrower, not from the chain.
+          Tags are HMAC-SHA256 under the tag authority's secret. This runs the real registry in your browser: pledge an
+          invoice, then try to find it in the public tag set knowing only its number.
         </p>
         <button onClick={snoopOnePledge} disabled={onePledge.length > 0}>Try it</button>
         <ul className="seen">{onePledge.map((l) => <li key={l}>{l}</li>)}</ul>
         <p className="muted small">
-          Trust today: the tag authority itself can compute tags, so it must be honest and keep its key safe. Wave 3
-          splits it into a threshold committee.
+          Limits, stated plainly: the tag authority computes tags, so it can see whether its invoices were pledged; and
+          anyone a borrower hands a tag can keep checking it. Wave 3 splits the authority into a threshold committee.
         </p>
       </article>
     </section>
