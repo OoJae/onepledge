@@ -1,0 +1,67 @@
+{
+  "network": "preprod",
+  "contractAddress": "9eefef805cab2d064ebfe4c2f6b3599663860ba7dc1b69877e3a6b9c976eabd1",
+  "deployTxId": "003bcfcd0495a26136c39a3a117040c5a0a564d31257bae44f4d53c5e13c093e3e",
+  "deployBlockHeight": 2543245,
+  "deployedAt": "2026-09-14T07:48:36.363Z",
+  "tagAuthority": {
+    "x": "48817866768362115749717640132431737144656854862769456630695825445246438828101",
+    "y": "26210506021675530152345939211530494862711628490685782702923573844959068851475"
+  },
+  "windowStart": 20635,
+  "windowEnd": 20819,
+  "events": [
+    {
+      "label": "Registrar admits lender A",
+      "circuit": "admitLender",
+      "txId": "0016984be299845843e6c795f178133476bc841b92acb18427d24b14376c70fadf",
+      "blockHeight": 2543275,
+      "outcome": "accepted",
+      "at": "2026-09-14T07:51:38.300Z",
+      "txHash": "977953b77b9910eff60862e2f39469f3ea0097aa803592552039c9c7172bd616"
+    },
+    {
+      "label": "Registrar admits lender B",
+      "circuit": "admitLender",
+      "txId": "00cde2fe486ecb0319d936e25d9932d73733677f1ea46f3a13c6162774a7aa5c28",
+      "blockHeight": 2543279,
+      "outcome": "accepted",
+      "at": "2026-09-14T07:52:03.539Z",
+      "txHash": "b92abf7e8d4d89b283faeb00d6449b23664baefc36715177f248239cc226b494"
+    },
+    {
+      "label": "Borrower pledges invoice 1 to lender A",
+      "circuit": "pledge",
+      "txId": "00a95bc990bf6381665f5be3cbb22074c2953950b0db9864c9c8a18e6e2e3987b3",
+      "blockHeight": 2543285,
+      "outcome": "accepted",
+      "at": "2026-09-14T07:52:37.394Z",
+      "txHash": "be2b08d75694c7ca91519f8c9d67b4fcf4d40f587cae97f0cfbf5d5c097714aa"
+    },
+    {
+      "label": "Borrower re-pledges invoice 1 to lender B",
+      "circuit": "pledge",
+      "outcome": "rejected before proving: Receivable already pledged",
+      "at": "2026-09-14T07:52:38.018Z"
+    },
+    {
+      "label": "Borrower pledges invoice 2 to lender B",
+      "circuit": "pledge",
+      "txId": "008533bacea6bbdb6a98a4fa6858e844db3ab296344c6b370bae6b59bc54931bbf",
+      "blockHeight": 2543290,
+      "outcome": "accepted",
+      "at": "2026-09-14T07:53:08.598Z",
+      "txHash": "c88a1b8763f75a80221ed7ded8542b29789377b58165bc0f7ed69e75678a368b"
+    },
+    {
+      "label": "Lender A releases invoice 1",
+      "circuit": "release",
+      "txId": "009ee67e8dd81782d6c603293292eec812799120d3bdb6edafb0181d9fbef69354",
+      "blockHeight": 2543295,
+      "outcome": "accepted",
+      "at": "2026-09-14T07:53:37.729Z",
+      "txHash": "ca55d14f54937b067b39033bed20fd3d87e998e782b2302a083f9ca8cd71708b"
+    }
+  ],
+  "deployTxHash": "1b2ec165a8c9c900c0811fff553f5306a5005253b5d52be99e50769e6eae39fd"
+}

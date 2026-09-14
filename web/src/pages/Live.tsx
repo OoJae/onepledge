@@ -11,11 +11,12 @@ type Deployment = {
   network: string;
   contractAddress: string;
   deployTxId: string;
+  deployTxHash?: string;
   deployBlockHeight: number;
   deployedAt: string;
   windowStart: number;
   windowEnd: number;
-  events: { label: string; circuit: string; txId?: string; blockHeight?: number; outcome: string; at: string }[];
+  events: { label: string; circuit: string; txId?: string; txHash?: string; blockHeight?: number; outcome: string; at: string }[];
 };
 
 const deployments = Object.values(
@@ -141,14 +142,14 @@ export function Live() {
           <li className="ok">
             <span className="badge">deploy</span>
             <span>Registry deployed</span>
-            <a className="mono" href={`${EXPLORER}/transactions/${deployment.deployTxId}`} target="_blank" rel="noreferrer">{short(deployment.deployTxId)}</a>
+            <a className="mono" href={`${EXPLORER}/transactions/${deployment.deployTxHash ?? ''}`} target="_blank" rel="noreferrer">{short(deployment.deployTxHash ?? deployment.deployTxId)} · block {deployment.deployBlockHeight}</a>
           </li>
           {deployment.events.map((e, i) => (
             <li key={i} className={e.txId ? 'ok' : 'rejected'}>
               <span className="badge">{e.txId ? e.circuit : 'rejected'}</span>
               <span>{e.label}</span>
               {e.txId ? (
-                <a className="mono" href={`${EXPLORER}/transactions/${e.txId}`} target="_blank" rel="noreferrer">{short(e.txId)} · block {e.blockHeight}</a>
+                <a className="mono" href={`${EXPLORER}/transactions/${e.txHash ?? ''}`} target="_blank" rel="noreferrer">{short(e.txHash ?? e.txId)} · block {e.blockHeight}</a>
               ) : (
                 <span className="mono muted">{e.outcome}</span>
               )}

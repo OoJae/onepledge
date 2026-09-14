@@ -106,12 +106,14 @@ export interface DeploymentRecord {
   network: string;
   contractAddress: string;
   deployTxId: string;
+  /** Transaction hash as used by the indexer and explorer (differs from the tx identifier). */
+  deployTxHash?: string;
   deployBlockHeight: number;
   deployedAt: string;
   tagAuthority: { x: string; y: string };
   windowStart: number;
   windowEnd: number;
-  events: { label: string; circuit: string; txId?: string; blockHeight?: number; outcome: string; at: string }[];
+  events: { label: string; circuit: string; txId?: string; txHash?: string; blockHeight?: number; outcome: string; at: string }[];
 }
 
 export const deploymentFile = (network: NetworkConfig) => path.join(deploymentsDir, `${network.name}.json`);

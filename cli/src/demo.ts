@@ -6,6 +6,8 @@
 //   4. borrower pledges a second invoice to lender B           -> accepted
 //   5. lender A releases the first pledge (invoice paid)
 // Every accepted step is a real transaction; tx ids are appended to deployments/<network>.json.
+// The public record names invoices only as "invoice 1/2": publishing their KSeF numbers next to
+// transaction hashes would create exactly the link the registry exists to avoid.
 
 import { randomBytes } from 'node:crypto';
 import { findDeployedContract } from '@midnight-ntwrk/midnight-js-contracts';
@@ -46,7 +48,7 @@ const providers: RegistryProviders = await configureProviders(ctx, network);
 // Private state is scoped per contract; bind the store to this deployment before writing to it.
 providers.privateStateProvider.setContractAddress(record.contractAddress);
 
-type TxPublic = { txId: string; blockHeight: number };
+type TxPublic = { txId: string; txHash: string; blockHeight: number };
 
 const join = async (party: PartyId, state: OnePledgePrivateState) => {
   await providers.privateStateProvider.set(party, state);
@@ -59,7 +61,7 @@ const join = async (party: PartyId, state: OnePledgePrivateState) => {
 };
 
 const note = (label: string, circuit: string, outcome: string, tx?: TxPublic) => {
-  record.events.push({ label, circuit, txId: tx?.txId, blockHeight: tx?.blockHeight, outcome, at: new Date().toISOString() });
+  record.events.push({ label, circuit, txId: tx?.txId, txHash: tx?.txHash, blockHeight: tx?.blockHeight, outcome, at: new Date().toISOString() });
   writeDeployment(network, record);
   log(`${label}: ${outcome}${tx ? ` (tx ${tx.txId}, block ${tx.blockHeight})` : ''}`);
 };
@@ -108,7 +110,7 @@ const borrowerA = await join('borrower', {
   noteSalt: noteSalt1,
 });
 const pledged = await borrowerA.callTx.pledge(lenderKey(parties.lenderA));
-note(`Borrower pledges ${invoice1} to lender A`, 'pledge', 'accepted', pledged.public);
+note('Borrower pledges invoice 1 to lender A', 'pledge', 'accepted', pledged.public);
 
 // 3. Same invoice, fresh attestation, different lender: must be rejected.
 const again = attestFor(invoice1, '12500000');
@@ -120,13 +122,13 @@ await providers.privateStateProvider.set('borrower', {
 });
 try {
   await borrowerA.callTx.pledge(lenderKey(parties.lenderB));
-  note(`Borrower re-pledges ${invoice1} to lender B`, 'pledge', 'UNEXPECTEDLY ACCEPTED');
+  note('Borrower re-pledges invoice 1 to lender B', 'pledge', 'UNEXPECTEDLY ACCEPTED');
   throw new Error('Double pledge was accepted; aborting demo');
 } catch (e) {
   const message = (e as Error).message;
   if (!/already pledged/.test(message)) throw e;
   const reason = /failed assert: ([^\n]*)/.exec(message)?.[1] ?? message.split('\n')[0];
-  note(`Borrower re-pledges ${invoice1} to lender B`, 'pledge', `rejected before proving: ${reason}`);
+  note('Borrower re-pledges invoice 1 to lender B', 'pledge', `rejected before proving: ${reason}`);
 }
 
 // 4. A different invoice to lender B goes through.
@@ -138,7 +140,7 @@ await providers.privateStateProvider.set('borrower', {
   noteSalt: newSalt(),
 });
 const pledged2 = await borrowerA.callTx.pledge(lenderKey(parties.lenderB));
-note(`Borrower pledges ${invoice2} to lender B`, 'pledge', 'accepted', pledged2.public);
+note('Borrower pledges invoice 2 to lender B', 'pledge', 'accepted', pledged2.public);
 
 // 5. Lender A releases invoice 1 (paid).
 const lenderA = await join('lenderA', {
@@ -146,7 +148,7 @@ const lenderA = await join('lenderA', {
   releaseNote: { tag: att1.attestation.tag, invoiceCommit: att1.attestation.invoiceCommit, salt: noteSalt1 },
 });
 const released = await lenderA.callTx.release();
-note(`Lender A releases ${invoice1}`, 'release', 'accepted', released.public);
+note('Lender A releases invoice 1', 'release', 'accepted', released.public);
 
 await saveSnapshot(ctx, network);
 await ctx.wallet.stop();

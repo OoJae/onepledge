@@ -10,6 +10,22 @@ Built for the Midnight Buildathon (AKINDO WaveHack). Wave 1 submission.
 
 ---
 
+## Live on Midnight Preprod
+
+Registry contract [`9eefef805cab2d064ebfe4c2f6b3599663860ba7dc1b69877e3a6b9c976eabd1`](https://preprod.midnightexplorer.com/contracts/9eefef805cab2d064ebfe4c2f6b3599663860ba7dc1b69877e3a6b9c976eabd1), deployed 2026-09-14. The full scenario ran against it with real proofs from a local proof server. Invoice numbers are deliberately left out of this public record: linking them to transactions is exactly what OnePledge prevents.
+
+| Step | Transaction | Block |
+|---|---|---|
+| Deploy registry | [`1b2ec165a8c9…`](https://preprod.midnightexplorer.com/transactions/1b2ec165a8c9c900c0811fff553f5306a5005253b5d52be99e50769e6eae39fd) | 2543245 |
+| Admit lender A | [`977953b77b99…`](https://preprod.midnightexplorer.com/transactions/977953b77b9910eff60862e2f39469f3ea0097aa803592552039c9c7172bd616) | 2543275 |
+| Admit lender B | [`b92abf7e8d4d…`](https://preprod.midnightexplorer.com/transactions/b92abf7e8d4d89b283faeb00d6449b23664baefc36715177f248239cc226b494) | 2543279 |
+| Pledge invoice 1 to lender A | [`be2b08d75694…`](https://preprod.midnightexplorer.com/transactions/be2b08d75694c7ca91519f8c9d67b4fcf4d40f587cae97f0cfbf5d5c097714aa) | 2543285 |
+| Re-pledge invoice 1 to lender B | **Rejected before proving:** Receivable already pledged (no transaction exists) | none |
+| Pledge invoice 2 to lender B | [`c88a1b8763f7…`](https://preprod.midnightexplorer.com/transactions/c88a1b8763f75a80221ed7ded8542b29789377b58165bc0f7ed69e75678a368b) | 2543290 |
+| Release invoice 1 | [`ca55d14f5493…`](https://preprod.midnightexplorer.com/transactions/ca55d14f54937b067b39033bed20fd3d87e998e782b2302a083f9ca8cd71708b) | 2543295 |
+
+The web app's **Live registry** page reads this contract straight from the public indexer and decodes it with the contract's compiled ledger reader: 2 pledges, 1 release, 2 admitted lenders, 2 opaque tags, and nothing else. The full record is in [`deployments/preprod.json`](deployments/preprod.json).
+
 ## The problem
 
 In receivables finance a company borrows against invoices it has issued. The classic fraud is to pledge the same invoice to several lenders. Lenders could catch it by pooling their books, but a lender's client list and pricing are its business, so no lender will show them to a competitor.
@@ -101,7 +117,7 @@ deployments/  Public record of deployments and transaction ids
 
 ### Prerequisites
 
-- Node.js 22+ and Docker
+- Node.js 22+ and Docker. The CLI scripts run on Node 22 via `npx node@22`: Node 23+ uses a built-in WebSocket that drops Preprod RPC submissions (observed with the Midnight wallet SDK 1.2.0).
 - Compact toolchain 0.31.1:
   ```bash
   curl --proto '=https' --tlsv1.2 -LsSf https://github.com/midnightntwrk/compact/releases/latest/download/compact-installer.sh | sh

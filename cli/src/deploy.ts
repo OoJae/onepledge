@@ -45,7 +45,7 @@ const deployed = await deployContract(providers, {
   args: [authority.pk, BigInt(WINDOW_START), BigInt(WINDOW_END)],
 } as never);
 
-const pub = (deployed as { deployTxData: { public: { contractAddress: string; txId: string; blockHeight: number } } })
+const pub = (deployed as { deployTxData: { public: { contractAddress: string; txId: string; txHash: string; blockHeight: number } } })
   .deployTxData.public;
 log(`Deployed at ${pub.contractAddress} in tx ${pub.txId} (block ${pub.blockHeight})`);
 
@@ -53,6 +53,7 @@ writeDeployment(network, {
   network: network.name,
   contractAddress: pub.contractAddress,
   deployTxId: pub.txId,
+  deployTxHash: pub.txHash,
   deployBlockHeight: pub.blockHeight,
   deployedAt: new Date().toISOString(),
   tagAuthority: { x: authority.pk.x.toString(), y: authority.pk.y.toString() },
