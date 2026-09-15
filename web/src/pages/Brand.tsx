@@ -18,6 +18,9 @@ const downloads = [
   ['Horizontal lockup', '/brand/lockup-horizontal.svg'],
   ['Stacked lockup', '/brand/lockup-stacked.svg'],
   ['Guilloché pattern', '/brand/guilloche.svg'],
+  ['App icon 512', '/brand/icon-512.png'],
+  ['Apple touch icon', '/brand/apple-touch-icon.png'],
+  ['Seal render', '/brand/seal-render.png'],
   ['Open Graph image', '/og.png'],
 ];
 
