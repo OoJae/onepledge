@@ -11,7 +11,7 @@ import vercel from './vercel.json' with { type: 'json' };
 const hostedHeaders = Object.fromEntries(vercel.headers[0].headers.map((h) => [h.key, h.value]));
 
 export default defineConfig(({ mode }) => ({
-  base: './',
+  base: '/',
   define: {
     'process.env.NODE_ENV': JSON.stringify(mode === 'production' ? 'production' : 'development'),
     global: 'globalThis',
@@ -21,7 +21,8 @@ export default defineConfig(({ mode }) => ({
     alias: { 'isomorphic-ws': fileURLToPath(new URL('./src/isomorphic-ws.ts', import.meta.url)) },
   },
   optimizeDeps: { exclude: ['@midnight-ntwrk/onchain-runtime-v3'] },
-  build: { target: 'esnext', commonjsOptions: { transformMixedEsModules: true } },
+  // assetsInlineLimit 0: inlined data: fonts would violate the CSP (no data: in font-src).
+  build: { target: 'esnext', assetsInlineLimit: 0, commonjsOptions: { transformMixedEsModules: true } },
   preview: { headers: hostedHeaders },
   server: {
     fs: {

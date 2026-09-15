@@ -87,7 +87,7 @@ export function Story() {
         <span>
           This walkthrough runs the real compiled Compact circuits in your browser against an in-memory ledger: no
           transactions are sent. The same contract is deployed on Midnight Preprod: see the{' '}
-          <a href="#/live">Live registry</a>.
+          <a href="/live">Live registry</a>.
         </span>
       </p>
 
@@ -158,7 +158,7 @@ export function Story() {
           Tag {short(hex(run.attestation.tag))} · every pledge carries a fresh signature from the tag authority,
           verified inside the circuit. This page runs the compiled circuits against an in-memory ledger: no proofs are
           generated and nothing goes on chain. The same flow runs on Preprod from the CLI: see the{' '}
-          <a href="#/live">Live registry</a>.
+          <a href="/live">Live registry</a>.
         </p>
       </section>
     </>

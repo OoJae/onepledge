@@ -4,6 +4,7 @@
   "installCommand": "true",
   "buildCommand": "npm run build",
   "outputDirectory": "dist",
+  "trailingSlash": false,
   "headers": [
     {
       "source": "/(.*)",
@@ -36,20 +37,26 @@
       ]
     }
   ],
+  "rewrites": [
+    {
+      "source": "/((?!assets/|brand/).*)",
+      "destination": "/index.html"
+    }
+  ],
   "redirects": [
     {
-      "source": "/live",
-      "destination": "/#/live",
-      "permanent": false
-    },
-    {
       "source": "/attack",
-      "destination": "/#/attack",
+      "destination": "/attacks",
       "permanent": false
     },
     {
       "source": "/story",
-      "destination": "/#/",
+      "destination": "/demo",
+      "permanent": false
+    },
+    {
+      "source": "/walkthrough",
+      "destination": "/demo",
       "permanent": false
     }
   ]
