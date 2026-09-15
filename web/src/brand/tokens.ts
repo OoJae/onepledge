@@ -19,7 +19,7 @@ export const font = {
 } as const;
 
 export const size = {
-  displayXl: 'clamp(3.25rem, 9vw, 10.5rem)',
+  displayXl: 'clamp(3.25rem, 9vw, 8.75rem)',
   displayL: 'clamp(2.25rem, 5vw, 5.5rem)',
   h2: 'clamp(1.75rem, 3vw, 3rem)',
   h3: 'clamp(1.2rem, 1.6vw, 1.5rem)',
