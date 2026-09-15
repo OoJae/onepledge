@@ -11,7 +11,7 @@
     "deploy": "npx -y node@22 --import tsx src/deploy.ts",
     "demo": "npx -y node@22 --import tsx src/demo.ts",
     "_note": "CLI runs on Node 22: Node 23+ ships a native WebSocket that drops Preprod RPC submissions.",
-    "verify:onchain": "npx -y node@22 --import tsx src/verify-onchain.ts"
+    "verify:onchain": "node --import tsx src/verify-onchain.ts"
   },
   "dependencies": {
     "@onepledge/contract": "*",

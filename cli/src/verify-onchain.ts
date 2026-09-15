@@ -52,5 +52,5 @@ if (failures.length) {
   console.error(`\n${failures.length} check(s) failed.`);
   process.exit(1);
 }
-console.log(`\nThe registry at ${record.contractAddress} on ${network.name} matches this repository.`);
+console.log(`\nThe registry at ${record.contractAddress} on ${network.name} matches this repository, according to the indexer at ${network.indexer}.`);
 process.exit(0);

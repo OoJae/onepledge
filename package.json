@@ -17,7 +17,8 @@
   "scripts": {
     "compact": "npm run compact --workspace contract",
     "test": "npm test --workspaces --if-present",
-    "typecheck": "npm run typecheck --workspaces --if-present"
+    "typecheck": "npm run typecheck --workspaces --if-present",
+    "verify:onchain": "npm run verify:onchain --workspace cli"
   },
   "devDependencies": {
     "@types/node": "^25.0.1",

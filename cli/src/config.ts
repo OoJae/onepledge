@@ -20,8 +20,9 @@ export interface NetworkConfig {
 
 export const preprod: NetworkConfig = {
   name: 'preprod',
-  indexer: 'https://indexer.preprod.midnight.network/api/v4/graphql',
-  indexerWS: 'wss://indexer.preprod.midnight.network/api/v4/graphql/ws',
+  // ONEPLEDGE_INDEXER / ONEPLEDGE_INDEXER_WS point the CLI at your own indexer instead of the public one.
+  indexer: process.env.ONEPLEDGE_INDEXER ?? 'https://indexer.preprod.midnight.network/api/v4/graphql',
+  indexerWS: process.env.ONEPLEDGE_INDEXER_WS ?? 'wss://indexer.preprod.midnight.network/api/v4/graphql/ws',
   node: 'wss://rpc.preprod.midnight.network',
   proofServer: process.env.PROOF_SERVER_URL ?? 'http://127.0.0.1:6300',
   networkId: 'preprod',
