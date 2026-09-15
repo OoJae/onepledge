@@ -615,3 +615,93 @@
     background: linear-gradient(90deg, var(--ink) 0%, color-mix(in srgb, var(--ink) 88%, transparent) 26%, transparent 50%);
   }
 }
+
+/* ── Orchestrated entrance: once, on load and on arrival ──── */
+.l-line {
+  display: block;
+  padding-bottom: 0.14em;
+  margin-bottom: -0.14em;
+}
+.l-line-inner {
+  display: block;
+}
+@media (prefers-reduced-motion: no-preference) {
+  /* The headline is the page's largest paint, so it is never held back; only the second line leans in. */
+  .l-line:nth-child(2) {
+    overflow: clip;
+  }
+  .l-line:nth-child(2) .l-line-inner {
+    animation: l-rise 1.15s var(--motion-out) 0.12s both;
+  }
+  .l-hero-copy .eyebrow,
+  .l-lede,
+  .l-cta,
+  .l-proof {
+    animation: l-fade-up 0.9s var(--motion-out) both;
+  }
+  .l-hero-copy .eyebrow {
+    animation-delay: 0.05s;
+  }
+  .l-lede {
+    animation-delay: 0.32s;
+  }
+  .l-cta {
+    animation-delay: 0.42s;
+  }
+  .l-proof {
+    animation-delay: 0.52s;
+  }
+  .l-hero-stage {
+    animation: l-settle 1.4s var(--motion-out) 0.12s both;
+  }
+  .l-scroll-hint {
+    animation: l-fade-in 1s var(--motion-out) 1s both;
+  }
+  [data-reveal] {
+    opacity: 0;
+    transform: translateY(28px);
+    transition:
+      opacity 0.8s var(--motion-out),
+      transform 1s var(--motion-out);
+  }
+  [data-reveal][data-revealed='true'] {
+    opacity: 1;
+    transform: none;
+  }
+}
+@keyframes l-rise {
+  from {
+    transform: translateY(105%);
+  }
+  to {
+    transform: none;
+  }
+}
+@keyframes l-fade-up {
+  from {
+    opacity: 0;
+    transform: translateY(16px);
+  }
+  to {
+    opacity: 1;
+    transform: none;
+  }
+}
+@keyframes l-settle {
+  from {
+    opacity: 0;
+    transform: translateY(24px) rotate(-3deg) scale(0.96);
+  }
+  to {
+    opacity: 1;
+    transform: none;
+  }
+}
+@keyframes l-fade-in {
+  from {
+    opacity: 0;
+  }
+  to {
+    opacity: 1;
+  }
+}

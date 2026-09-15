@@ -48,28 +48,38 @@ export function SealScene() {
     section.current.addEventListener('seal-context-lost', onLost);
     cleanups.push(() => section.current?.removeEventListener('seal-context-lost', onLost));
 
-    // Desktop: load the scene once the page is idle. Touch devices: only when the scene is about to scroll into view.
-    const coarse = window.matchMedia('(pointer: coarse)').matches;
-    if (coarse) {
-      const io = new IntersectionObserver(
-        ([entry]) => {
-          if (entry.isIntersecting) {
-            io.disconnect();
-            void loadScene();
-          }
-        },
-        { rootMargin: '50% 0px' },
-      );
-      io.observe(section.current);
-      cleanups.push(() => io.disconnect());
-    } else {
-      const idle = (window as Window & { requestIdleCallback?: (cb: () => void, o?: { timeout: number }) => number }).requestIdleCallback;
-      const run = () => void loadScene();
-      if (idle) idle(run, { timeout: 1500 });
-      else setTimeout(run, 600);
-    }
+    // Build the 3D scene only when the reader is about to reach it: nothing heavy runs while they read the hero.
+    const io = new IntersectionObserver(
+      ([entry]) => {
+        if (entry.isIntersecting) {
+          io.disconnect();
+          void loadScene();
+        }
+      },
+      { rootMargin: '0px 0px 15% 0px' },
+    );
+    io.observe(section.current);
+    cleanups.push(() => io.disconnect());
 
-    void loadMotion().then((motion) => {
+    // Scroll machinery loads on the reader's first interaction, or when the scene approaches; nothing loads for a still page.
+    let motionRequested = false;
+    const startMotion = () => {
+      if (motionRequested) return;
+      motionRequested = true;
+      events.forEach((type) => window.removeEventListener(type, startMotion));
+      nearIo.disconnect();
+      void loadMotion().then(onMotion);
+    };
+    const events = ['scroll', 'wheel', 'touchstart', 'keydown', 'pointerdown'] as const;
+    events.forEach((type) => window.addEventListener(type, startMotion, { passive: true, once: true }));
+    const nearIo = new IntersectionObserver(([entry]) => entry.isIntersecting && startMotion(), { rootMargin: '0px 0px 100% 0px' });
+    nearIo.observe(section.current);
+    cleanups.push(() => {
+      events.forEach((type) => window.removeEventListener(type, startMotion));
+      nearIo.disconnect();
+    });
+
+    const onMotion = (motion: Awaited<ReturnType<typeof loadMotion>>) => {
       if (cancelled || !section.current) return;
       const { gsap, ScrollTrigger } = motion;
       cleanups.push(startLenis(motion));
@@ -95,7 +105,7 @@ export function SealScene() {
         tween.kill();
       });
       ScrollTrigger.refresh();
-    });
+    };
 
     return () => {
       cancelled = true;
@@ -142,7 +152,7 @@ export function SealScene() {
           <div className="l-stage-lamp" />
           {BEATS.map((b, i) => (
             <div key={b.beat} className="l-stage-art" data-active={i === beat}>
-              <SealArt beat={b.beat} />
+              {!ready3d && Math.abs(i - beat) <= 1 && <SealArt beat={b.beat} />}
             </div>
           ))}
           <canvas ref={canvas} className="l-canvas" />

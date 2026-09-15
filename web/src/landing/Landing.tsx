@@ -1,4 +1,5 @@
 // SPDX-License-Identifier: Apache-2.0
+import { useEffect, useRef } from 'react';
 import { EXPLORER, registry, shortHash } from '../brand/facts.ts';
 import { SealArt } from './SealArt.tsx';
 import { SealScene } from './SealScene.tsx';
@@ -26,18 +27,44 @@ const parties = [
   ['The tag authority', 'Which of its invoices were pledged, and when', 'Which lender financed them, or the terms'],
 ];
 
+/** Sections fade up once as they enter the viewport. Reduced motion shows them at once (see landing.css). */
+function useReveal() {
+  const root = useRef<HTMLDivElement>(null);
+  useEffect(() => {
+    const targets = root.current?.querySelectorAll<HTMLElement>('[data-reveal]') ?? [];
+    const io = new IntersectionObserver(
+      (entries) =>
+        entries.forEach((e) => {
+          if (e.isIntersecting) {
+            (e.target as HTMLElement).dataset.revealed = 'true';
+            io.unobserve(e.target);
+          }
+        }),
+      { rootMargin: '0px 0px -15% 0px' },
+    );
+    targets.forEach((t) => io.observe(t));
+    return () => io.disconnect();
+  }, []);
+  return root;
+}
+
 export function Landing() {
   const txs = registry.events.filter((e) => e.txHash);
+  const root = useReveal();
   return (
-    <>
+    <div ref={root} className="l-root">
       <section className="l-hero" aria-labelledby="hero-title">
         <div className="container l-hero-grid">
           <div className="l-hero-copy">
             <p className="eyebrow">Receivables registry on Midnight · Preprod</p>
             <h1 id="hero-title" tabIndex={-1} className="l-display">
-              <span className="l-line">One invoice.</span>
               <span className="l-line">
-                <em>One pledge.</em>
+                <span className="l-line-inner">One invoice.</span>
+              </span>
+              <span className="l-line">
+                <span className="l-line-inner">
+                  <em>One pledge.</em>
+                </span>
               </span>
             </h1>
             <p className="l-lede">
@@ -68,7 +95,7 @@ export function Landing() {
       <SealScene />
 
       <section className="l-section container" id="after-scene" aria-labelledby="books-title">
-        <div className="l-split">
+        <div className="l-split" data-reveal>
           <h2 id="books-title" className="l-h2" tabIndex={-1}>
             Lenders could catch it by comparing books. <em>None will.</em>
           </h2>
@@ -89,10 +116,10 @@ export function Landing() {
       </section>
 
       <section className="l-section container" aria-labelledby="how-title">
-        <h2 id="how-title" className="l-h2">
+        <h2 id="how-title" className="l-h2" data-reveal>
           How a pledge is recorded
         </h2>
-        <ol className="l-steps">
+        <ol className="l-steps" data-reveal>
           {steps.map((s, i) => (
             <li key={s.title}>
               <span className="l-margin">{String(i + 1).padStart(2, '0')}</span>
@@ -104,10 +131,10 @@ export function Landing() {
       </section>
 
       <section className="l-section container" aria-labelledby="parties-title">
-        <h2 id="parties-title" className="l-h2">
+        <h2 id="parties-title" className="l-h2" data-reveal>
           Everyone learns only <em>their share</em>
         </h2>
-        <div className="l-table-wrap">
+        <div className="l-table-wrap" data-reveal>
           <table className="l-table">
             <thead>
               <tr>
@@ -130,7 +157,7 @@ export function Landing() {
       </section>
 
       <section className="l-section container" aria-labelledby="proof-title">
-        <div className="l-proof-head">
+        <div className="l-proof-head" data-reveal>
           <h2 id="proof-title" className="l-h2">
             Running on Midnight Preprod
           </h2>
@@ -142,7 +169,7 @@ export function Landing() {
             . Labels come from the operator's run log; on chain these are plain calls.
           </p>
         </div>
-        <ol className="l-ledger">
+        <ol className="l-ledger" data-reveal>
           <li>
             <span className="l-margin">{registry.deployBlock}</span>
             <span className="l-ledger-label">Deploy registry v2</span>
@@ -173,7 +200,7 @@ export function Landing() {
         <h2 id="next-title" className="sr-only">
           Explore OnePledge
         </h2>
-        <div className="l-doors">
+        <div className="l-doors" data-reveal>
           <a className="l-door" href="/demo">
             <span className="l-door-kicker">In your browser</span>
             <span className="l-door-title">Try the pledge</span>
@@ -191,6 +218,6 @@ export function Landing() {
           </a>
         </div>
       </section>
-    </>
+    </div>
   );
 }

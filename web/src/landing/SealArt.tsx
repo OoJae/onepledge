@@ -1,15 +1,16 @@
 // SPDX-License-Identifier: Apache-2.0
 // Static illustration of each beat of the pledge. It is the reduced-motion version of the 3D scene
 // and the artwork shown until the scene is ready.
+import { memo } from 'react';
 import { rosette, ring } from '../brand/guilloche.ts';
 import { NUMERAL_ONE } from '../brand/mark.ts';
 import { DEMO_KSEF, V2_TAGS } from '../brand/facts.ts';
 
 export type Beat = 0 | 1 | 2 | 3;
 
-const ROSETTE = rosette(0, 0, 92, 11, 6, 700);
-const FACE_RING = ring(0, 0, 100, 3.2, 30, 4, 600);
-const WAX_RING = ring(0, 0, 44, 1.6, 18, 3, 360);
+const ROSETTE = rosette(0, 0, 92, 11, 6, 330);
+const FACE_RING = ring(0, 0, 100, 3.2, 30, 4, 300);
+const WAX_RING = ring(0, 0, 44, 1.6, 18, 3, 180);
 
 function Sheet({ x, y, rot, label }: { x: number; y: number; rot: number; label: string }) {
   return (
@@ -70,7 +71,7 @@ function Impression({ x, y }: { x: number; y: number }) {
   );
 }
 
-export function SealArt({ beat, className = '' }: { beat: Beat; className?: string }) {
+export const SealArt = memo(function SealArt({ beat, className = '' }: { beat: Beat; className?: string }) {
   return (
     <svg viewBox="0 0 640 640" className={`seal-art ${className}`} aria-hidden="true" focusable="false">
       <defs>
@@ -115,4 +116,4 @@ export function SealArt({ beat, className = '' }: { beat: Beat; className?: stri
       )}
     </svg>
   );
-}
+});
