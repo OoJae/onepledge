@@ -1,6 +1,8 @@
 # Wave 1 security review
 
-Before submitting Wave 1 we ran an adversarial review of the whole project: contract soundness, protocol and trust model, privacy, off-chain code, the web app, tests, docs, reproducibility and presentation. Independent reviewers raised findings; separate skeptics tried to refute each one against the code and the live Preprod state. 121 raw findings merged into 88; 2 were refuted. This page records what was found, what was fixed, and what is accepted for now.
+Before submitting Wave 1 we ran an adversarial review of the whole project: contract soundness, protocol and trust model, privacy, off-chain code, the web app, tests, docs, reproducibility and presentation. It was a structured self-review, not an external audit: separate AI-assisted reviewer passes looked at the project through different lenses, and separate skeptic passes tried to refute each finding against the code and the live Preprod state. 121 raw findings merged into 88; 2 were refuted.
+
+This page lists every finding that changes the security or trust story: the critical bug, each fix, and each limitation we accept for now. The remaining findings were lower-severity documentation, test, tooling, web and video items; they are not itemized here. An external review is planned for Wave 3.
 
 Severity scale: **critical** breaks the core guarantee; **high/medium** a reviewer or attacker would plausibly find it and it materially matters; **low/info** hardening.
 
@@ -18,7 +20,7 @@ Severity scale: **critical** breaks the core guarantee; **high/medium** a review
 
 **Regression tests** ([`security.test.ts`](../contract/src/test/security.test.ts)): for every byte position 0–31, a second pledge with that tag byte flipped is rejected; for every byte position, a flipped invoice commitment is rejected; a stretched expiry is rejected.
 
-**v1 status.** The v1 registry `9eefef80…` is deprecated. Its record is kept in [`deployments/archive/`](../deployments/archive/) for transparency. The Live page and all links point to v2.
+**v1 status.** The v1 registry `9eefef80…` is deprecated. Its record is kept in [`deployments/archive/`](../deployments/archive/) for transparency. The Live page and all links point to v2. v1 is still callable on Preprod (its verifier keys were not removed) and shares v2's tag authority and window, so it must not be used; the tag authority signs only v2 attestations.
 
 ### F32 (medium): attestations were not bound to a deployment
 
@@ -65,6 +67,7 @@ Found during the v2 redeploy. The CLI saved wallet state right after submitting 
 | F34 | A correction invoice has its own KSeF number; tagging by root invoice is attester policy, not contract-enforced. | Wave 2 KSeF adapter maps corrections to the root number. |
 | F35, F36 | Lender tree holds 1,024 entries, notes 65,536; lenders cannot be retired. | Wave 2: revocation set, duplicate-admission check, sized trees. |
 | F68 | `rotateRegistrar` is one step; rotating to a wrong key locks admissions. | Wave 2: two-step handover. |
+| M1 (post-review) | Versions are separated only by disjoint acceptance windows or by the authority's discipline. v1 and v2 share the window and tag authority, so migration relies on the authority not re-attesting for v2 an invoice already tagged on v1 (only two synthetic invoices were pledged on v1). | Next version: a disjoint window, or import of the previous tag set. |
 | F12 | The web app does not originate transactions; real transactions come from the CLI. | Wave 2: Lace-connected borrower desk and lender inbox. |
 | F37, F38, F39 | No proof-server-level tests, no racing-transaction test, no web or CLI tests in CI. | Wave 2 test plan. |
 

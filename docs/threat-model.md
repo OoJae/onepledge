@@ -4,7 +4,7 @@
 
 | Asset | Property |
 |---|---|
-| "One pledge per receivable" | No invoice is pledged twice in a registry, whoever colludes, as long as the tag authority is honest. |
+| "One pledge per receivable" | No invoice is pledged twice in a registry, whoever colludes, as long as the tag authority is honest and the 1-of-1 upgrade key does not replace verifier keys. |
 | A lender's book | Which invoices a lender financed, for whom, and on what terms. |
 | Invoice contents | Amount, debtor, due date. |
 | Borrower identity | Which company pledged. |
@@ -17,7 +17,7 @@
 | Registrar | Registrar secret | Admitting real lenders | Pledges or tags |
 | Borrower | Borrower secret, attestations, note salts | Nothing | Everything is checked in-circuit |
 | Lender | Lender secret, invoice openings it receives | Nothing | — |
-| Deployer | Contract maintenance key (1-of-1) | Not replacing verifier keys | Disclosed; 2-of-3 committee planned |
+| Deployer | Contract maintenance key (1-of-1, disclosed) | Not replacing verifier keys | Nothing else; a 2-of-3 committee is planned |
 | Proof server | Witnesses while proving | Run locally by each party | A remote proof server would see private inputs |
 
 ## Adversaries considered
@@ -46,6 +46,7 @@
 
 | Circuit | Published | Why |
 |---|---|---|
+| constructor | registrar key, tag authority, acceptance window | Sealed public parameters of the deployment |
 | `pledge` | tag | Needed to reject a second pledge |
 | `pledge` | note commitment (as a Merkle leaf) | The lender of record later proves membership |
 | `pledge` | lender-tree root used | The chain must check it is a real (historic) root |
@@ -53,7 +54,7 @@
 | `pledge` | registry address, tag-authority key, window | Public ledger reads |
 | `release` | nullifier | Prevents a second release; unlinkable to the note |
 | `release` | notes-tree root used | Same as above |
-| `admitLender` | the admitted lender key | Lenders are a public, admitted set |
-| `rotateRegistrar` | the next registrar key | Public role |
+| `admitLender` | the admitted lender key; the registrar key (public ledger read) | Lenders are a public, admitted set |
+| `rotateRegistrar` | the next registrar key; the current registrar key (public ledger read) | Public role |
 
-These are enforced by the allowlist tests in [`privacy.test.ts`](../contract/src/test/privacy.test.ts): any other value in a transcript fails the build.
+These are enforced by the allowlist tests in [`privacy.test.ts`](../contract/src/test/privacy.test.ts): any other value longer than a 2-byte constant fails the tests.

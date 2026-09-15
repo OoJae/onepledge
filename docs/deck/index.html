@@ -106,11 +106,11 @@
   <div class="card" style="padding:8px 24px">
     <table class="compare">
       <tr><th></th><th>Operator-run registry</th><th>Public hash registry</th><th>OnePledge on Midnight</th></tr>
-      <tr><td>Who sees each lender's deals</td><td>The operator</td><td>Nobody</td><td>Nobody</td></tr>
+      <tr><td>Who sees each lender's deals</td><td>The operator</td><td>Anyone who can hash the invoice</td><td>Nobody</td></tr>
       <tr><td>Dodged by a spelling change</td><td>No</td><td>Yes</td><td>No: one KSeF number, keyed tag</td></tr>
       <tr><td>Outsiders can see who financed what</td><td>No</td><td>Yes</td><td>No: tags need the authority's key</td></tr>
       <tr><td>Rule checked by code anyone can verify</td><td>No</td><td>Yes</td><td>Yes: in-circuit, verifier keys on chain</td></tr>
-      <tr><td>Still trusted</td><td>The operator, for everything</td><td>Nothing, but it leaks</td><td>The tag authority, to tag each invoice once</td></tr>
+      <tr><td>Still trusted</td><td>The operator, for everything</td><td>Nothing, but it leaks</td><td>The tag authority, to tag each invoice once; the 1-of-1 upgrade key</td></tr>
     </table>
   </div>
   <p style="margin-top:22px">Midnight gives private state with public verification: attestations, secrets and lender identity stay local; only what a circuit discloses reaches the ledger.</p>
@@ -146,7 +146,7 @@
       <tr><td>Tag authority</td><td>Its attested invoices, and whether and when each was pledged</td><td>Which lender financed them, or the terms</td></tr>
     </table>
   </div>
-  <p style="margin-top:24px">Enforced by privacy tests that check every value in each circuit's public transcript against an allowlist.</p>
+  <p style="margin-top:24px">Enforced by privacy tests that check every value longer than two bytes in each circuit's public transcript against an allowlist.</p>
   <div class="footer"><span>OnePledge</span><span>5</span></div>
 </section>
 
@@ -176,7 +176,7 @@
   <h2>We attacked it before anyone else could.</h2>
   <div class="grid3" style="margin-bottom:28px">
     <div class="card"><div class="stat">176</div><div class="statlabel">tests: adversarial witnesses, forgery, privacy allowlists</div></div>
-    <div class="card"><div class="stat">88</div><div class="statlabel">findings from an adversarial review, each challenged by a skeptic</div></div>
+    <div class="card"><div class="stat">88</div><div class="statlabel">findings from our own adversarial self-review, each challenged by a skeptic</div></div>
     <div class="card"><div class="stat">1</div><div class="statlabel">critical bug found in v1, fixed in v2, disclosed in full</div></div>
   </div>
   <div class="grid2">
@@ -205,6 +205,7 @@
       <h3>Beachhead: factoring on KSeF</h3>
       <p>Poland's national e-invoicing gives B2B invoices a canonical number. Buyers: factors, supply-chain-finance banks, private-credit funds. Distribution: the e-invoicing software that already connects them.</p>
       <p style="margin-top:16px">Useful with just two lenders. No consortium needed.</p>
+      <p style="margin-top:16px"><b>Model:</b> a KSeF-connected e-invoicing provider or lenders' association runs the tag authority; lenders pay per attestation checked or pledge registered.</p>
     </div>
     <div class="card">
       <h3>Next</h3>
