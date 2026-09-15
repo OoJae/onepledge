@@ -1,0 +1,32 @@
+/* SPDX-License-Identifier: Apache-2.0 */
+/* Generated from src/brand/tokens.ts by `npm run brand:tokens`. Do not edit by hand. */
+:root {
+  --ink: #0B0D12;
+  --ink2: #12151C;
+  --ink3: #1A1E27;
+  --rule: #2A2F3A;
+  --paper: #EDE6D6;
+  --paper-dim: #A9A396;
+  --wax: #E0452B;
+  --wax-lit: #F0664A;
+  --font-display: 'Fraunces Variable', 'Iowan Old Style', Georgia, serif;
+  --font-body: 'Inter Variable', system-ui, -apple-system, 'Segoe UI', sans-serif;
+  --font-mono: 'JetBrains Mono Variable', ui-monospace, Menlo, Consolas, monospace;
+  --size-display-xl: clamp(3.25rem, 9vw, 10.5rem);
+  --size-display-l: clamp(2.25rem, 5vw, 5.5rem);
+  --size-h2: clamp(1.75rem, 3vw, 3rem);
+  --size-h3: clamp(1.2rem, 1.6vw, 1.5rem);
+  --size-body: clamp(1rem, 1.05vw, 1.15rem);
+  --size-small: 0.875rem;
+  --size-label: 0.75rem;
+  --motion-out: cubic-bezier(0.16, 1, 0.3, 1);
+  --motion-in-out: cubic-bezier(0.65, 0, 0.35, 1);
+  --motion-micro: 0.28s;
+  --motion-reveal: 0.8s;
+  --motion-page: 0.9s;
+  --radius-sm: 6px;
+  --radius-md: 12px;
+  --radius-lg: 20px;
+  --radius-pill: 999px;
+  color-scheme: dark;
+}

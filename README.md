@@ -9,18 +9,19 @@ This project is built on the Midnight Network.
 <!-- links:start -->
 | | |
 |---|---|
-| Start here (3 minutes, no install) | 1. [Walkthrough](https://onepledge.vercel.app/#/): pledge, refused double pledge, release. 2. [Attacks](https://onepledge.vercel.app/#/attack): why a public hash registry fails. 3. [Live registry](https://onepledge.vercel.app/#/live): the deployed Preprod contract, read in your browser. Then [How to evaluate](#how-to-evaluate). |
-| Live demo | [onepledge.vercel.app](https://onepledge.vercel.app) (the walkthrough runs the compiled circuits in your browser; the Live page reads Preprod) |
+| Start here (3 minutes, no install) | 1. [Walkthrough](https://onepledge.vercel.app/demo): pledge, refused double pledge, release. 2. [Attacks](https://onepledge.vercel.app/attacks): why a public hash registry fails. 3. [Live registry](https://onepledge.vercel.app/live): the deployed Preprod contract, read in your browser. Then [How to evaluate](#how-to-evaluate). |
+| Live demo | [onepledge.vercel.app](https://onepledge.vercel.app): the landing page's 3D scene tells the pledge in four beats; the walkthrough runs the compiled circuits in your browser; the Live page reads Preprod |
 | Proof | Registry v2 [on Preprod](#live-on-midnight-preprod) with 6 transactions · `npm run verify:onchain` matches every verifier key · 176 tests in CI · our own review found and fixed a critical bug ([F01](docs/security-review.md#f01-critical-one-attestation-could-be-pledged-256-times)) |
 | Demo video | _added at submission_ |
 | Deck | [docs/OnePledge-Wave1-deck.pdf](docs/OnePledge-Wave1-deck.pdf) |
 | Security review | [docs/security-review.md](docs/security-review.md) · [threat model](docs/threat-model.md) |
+| Brand | [onepledge.vercel.app/brand](https://onepledge.vercel.app/brand) · [docs/brand](docs/brand/README.md) (mark, lockups, tokens, type, guilloché) |
 | CI | [![CI](https://github.com/OoJae/onepledge/actions/workflows/ci.yml/badge.svg)](https://github.com/OoJae/onepledge/actions/workflows/ci.yml) |
 <!-- links:end -->
 
 Built for the Midnight Buildathon (AKINDO WaveHack), Wave 1.
 
-![The OnePledge walkthrough: the second pledge of the same invoice is refused, and each party sees only its share](docs/img/walkthrough.png)
+![The OnePledge landing page: a notary seal has pressed a wax pledge onto an invoice, and the same invoice at Lender B is refused](docs/img/landing-scene.png)
 
 ---
 
@@ -58,7 +59,7 @@ It compares every circuit's verifier key on chain with `contract/src/managed/reg
 
 In receivables finance a company borrows against invoices it has issued. The classic fraud is to pledge the same invoice to several lenders. Lenders could catch it by pooling their books, but a lender's client list and pricing are its business, so no lender will show them to a competitor.
 
-The obvious blockchain fix, publishing `hash(invoice number, supplier, amount, due date)` and rejecting repeats, fails in two ways ([both attacks are in the live demo](https://onepledge.vercel.app/#/attack)):
+The obvious blockchain fix, publishing `hash(invoice number, supplier, amount, due date)` and rejecting repeats, fails in two ways ([both attacks are in the live demo](https://onepledge.vercel.app/attacks)):
 
 1. **Bypass.** Each bank writes invoice data its own way (`FV/2026/09/0412` vs `FV-2026-09-0412`, `PL5265877635` vs `5265877635`). A different spelling is a different hash, so the second pledge is accepted.
 2. **Snooping.** Anyone who knows an invoice's details (the debtor, a lender that saw it during underwriting) can hash them and learn from the public registry whether, and when, it was financed.
@@ -173,8 +174,8 @@ Compact toolchain **0.31.1** (language 0.23), the version Preprod runs. 4 provab
 contract/     Compact contract, witnesses, simulator, tests (vitest)
 attester/     KSeF parser (CRC-8, NIP check digit), keyed tags, invoice commitments, signer and verifier
 cli/          Headless wallet, deploy, end-to-end demo, verify:onchain
-web/          React app: walkthrough on the compiled circuits, attack comparison, live Preprod reader
-docs/         Security review, threat model, deck, video script
+web/          React app: 3D landing scene (three.js), walkthrough on the compiled circuits, attacks, live Preprod reader, brand page; Playwright e2e
+docs/         Security review, threat model, brand kit, deck, video script
 local-devnet/ Docker Compose for a local Midnight node + indexer (from midnightntwrk/midnight-local-dev)
 deployments/  Public record of deployments (active and archived)
 ```
@@ -184,9 +185,15 @@ deployments/  Public record of deployments (active and archived)
 ### 1. Open the live demo
 
 [onepledge.vercel.app](https://onepledge.vercel.app) needs no install:
-- **The story:** pledge, rejected double pledge and release, running the compiled circuits in your browser.
-- **Why not a hash registry:** both attacks, side by side with OnePledge.
-- **Live registry:** reads the Preprod contract from the public indexer, with a "Check a tag" box.
+- **Landing (`/`):** the pledge in four beats, as a scroll-driven 3D scene (illustrated beats with reduced motion or without WebGL).
+- **Walkthrough (`/demo`):** pledge, rejected double pledge and release, running the compiled circuits in your browser.
+- **Attacks (`/attacks`):** both attacks on a public hash registry, side by side with OnePledge.
+- **Live registry (`/live`):** reads the Preprod contract from the public indexer, with a "Check a tag" box.
+- **Brand (`/brand`):** the seal mark, lockups, colour, type and pattern, with files to download.
+
+Old `/#/`, `/#/attack` and `/#/live` links still work.
+
+![The walkthrough: the second pledge of the same invoice is refused, and each party sees only its share](docs/img/walkthrough.png)
 
 The walkthrough runs the compiled circuits against an in-memory ledger: no proofs, no transactions. The Preprod transactions come from the CLI.
 
@@ -247,6 +254,7 @@ ONEPLEDGE_NETWORK=undeployed npm run demo --workspace cli
 | [`tag.test.ts`](attester/test/tag.test.ts) | 17 | Tag determinism and keying, canonical-spelling enforcement, commitment hiding and binding for every field |
 | [`signing.test.ts`](attester/test/signing.test.ts) | 6 | Schnorr equation, scalar ranges, nonce freshness, wrong key and message |
 
+- **Web end-to-end:** `npm run e2e --workspace web` runs Playwright against the production build (walkthrough, attacks, live read and tag check, legacy links, the 3D scene's modes, axe) at desktop and phone sizes.
 - **What the tests run:** the compiled circuits in the simulator. Proof-server-level and racing-transaction tests are Wave 2.
 - **Kinds of negative test:** some replace honest witnesses with malicious ones and exercise the circuit's own asserts. Others (missing lender path, unknown note) exercise client-side guards.
 
