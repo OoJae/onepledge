@@ -2,7 +2,7 @@
 // The product flows judges use. These must keep passing through every redesign checkpoint.
 import { expect, test } from '@playwright/test';
 import AxeBuilder from '@axe-core/playwright';
-import { routes, watchPage } from './helpers.ts';
+import { brandRoutes, routes, watchPage } from './helpers.ts';
 
 test('walkthrough: pledge accepted, double pledge refused, release accepted', async ({ page }) => {
   const problems = await watchPage(page);
@@ -49,7 +49,7 @@ test('live: reads the Preprod registry and checks a tag', async ({ page }) => {
   expect(await problems()).toEqual([]);
 });
 
-for (const [name, path] of Object.entries(routes)) {
+for (const [name, path] of Object.entries({ ...routes, ...brandRoutes })) {
   test(`accessibility: ${name} has no axe violations`, async ({ page }) => {
     await page.goto(path);
     await expect(page.getByRole('heading', { level: 1 })).toBeVisible({ timeout: 60_000 });
@@ -58,3 +58,22 @@ for (const [name, path] of Object.entries(routes)) {
     expect(results.violations.map((v) => `${v.id}: ${v.nodes.length}`)).toEqual([]);
   });
 }
+
+test('landing: thesis, calls to action and real Preprod proof', async ({ page }) => {
+  test.skip(process.env.ROUTE_MODE === 'hash', 'landing exists only with path routes');
+  const problems = await watchPage(page);
+  await page.goto('/');
+  await expect(page.getByRole('heading', { level: 1 })).toHaveText(/One invoice\.\s*One pledge\./);
+  await expect(page.getByRole('link', { name: 'Try the pledge' }).first()).toHaveAttribute('href', '/demo');
+  await expect(page.getByText('refused before proving')).toBeVisible();
+  await expect(page.locator('a[href*="/transactions/cad891d7"]')).toBeVisible();
+  const wasm = [] as string[];
+  page.on('request', (r) => r.url().endsWith('.wasm') && wasm.push(r.url()));
+  await page.mouse.wheel(0, 4000);
+  await page.waitForTimeout(800);
+  expect(wasm).toEqual([]);
+  await page.getByRole('link', { name: /Try the pledge/ }).first().click();
+  await expect(page).toHaveURL(/\/demo$/);
+  await expect(page.getByRole('heading', { level: 1 })).toBeFocused();
+  expect(await problems()).toEqual([]);
+});

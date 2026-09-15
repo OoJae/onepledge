@@ -1,6 +1,7 @@
 // SPDX-License-Identifier: Apache-2.0
 import type { ComponentType } from 'react';
-import { lazyPage } from './router.ts';
+import { eagerPage, lazyPage } from './router.ts';
+import { Landing } from './landing/Landing.tsx';
 
 export interface RouteDef {
   path: string;
@@ -15,7 +16,7 @@ export interface RouteDef {
 const story = lazyPage(() => import('./pages/Story.tsx').then((m) => m.Story as ComponentType));
 
 export const ROUTES: RouteDef[] = [
-  { path: '/', label: 'OnePledge', title: 'OnePledge · one invoice, one pledge', fallback: 'Loading the compiled contract (about 0.5 MB)…', nav: false, page: story },
+  { path: '/', label: 'OnePledge', title: 'OnePledge · one invoice, one pledge', fallback: 'Loading…', nav: false, fullBleed: true, page: eagerPage(Landing) },
   { path: '/demo', label: 'Demo', title: 'OnePledge · walkthrough', fallback: 'Loading the compiled contract (about 0.5 MB)…', nav: true, page: story },
   {
     path: '/attacks',
@@ -32,6 +33,14 @@ export const ROUTES: RouteDef[] = [
     fallback: "Loading the contract's ledger reader and Midnight's ledger runtime (about 5 MB, cached after the first visit)…",
     nav: true,
     page: lazyPage(() => import('./pages/Live.tsx').then((m) => m.Live as ComponentType)),
+  },
+  {
+    path: '/brand',
+    label: 'Brand',
+    title: 'OnePledge · brand',
+    fallback: 'Loading…',
+    nav: true,
+    page: lazyPage(() => import('./pages/Brand.tsx').then((m) => m.Brand as ComponentType)),
   },
 ];
 

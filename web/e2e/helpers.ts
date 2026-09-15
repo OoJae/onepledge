@@ -10,6 +10,8 @@ export const routes = {
   live: hashMode ? '/#/live' : '/live',
 };
 
+export const brandRoutes = hashMode ? {} : { landing: '/', brand: '/brand' };
+
 /** Collects CSP violations and console errors for the lifetime of the page. */
 export async function watchPage(page: Page) {
   const problems: string[] = [];

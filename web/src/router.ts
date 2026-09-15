@@ -23,6 +23,14 @@ export function lazyPage(load: () => Promise<ComponentType>) {
   };
 }
 
+/** A page bundled with the entry chunk: already settled, so it renders without Suspense. */
+export function eagerPage(component: ComponentType) {
+  const promise: Settled<ComponentType> = Promise.resolve(component);
+  promise.status = 'fulfilled';
+  promise.value = component;
+  return () => promise;
+}
+
 /** Renders a lazy page without a Suspense flash when it was preloaded before navigation. */
 export function useLoadedPage(get: () => Settled<ComponentType>): ComponentType {
   const promise = get();
