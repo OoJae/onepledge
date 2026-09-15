@@ -28,11 +28,11 @@ test('navigation keeps history, titles and focus', async ({ page, isMobile }) =>
   await page.goto('/demo');
   await expect(page.getByRole('heading', { level: 1 })).toContainText('One invoice');
   const nav = page.getByRole('navigation');
-  await nav.getByRole('link', { name: /hash registry/i }).click();
+  await nav.getByRole('link', { name: 'Attacks' }).click();
   await expect(page).toHaveURL(/\/attacks$/);
   await expect(page.getByRole('heading', { level: 1 })).toBeFocused();
   await expect(page).toHaveTitle(/why not a hash registry/);
-  await nav.getByRole('link', { name: /Live registry/ }).click();
+  await nav.getByRole('link', { name: 'Live' }).click();
   await expect(page).toHaveURL(/\/live$/);
   await page.goBack();
   await expect(page).toHaveURL(/\/attacks$/);

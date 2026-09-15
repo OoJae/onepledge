@@ -8,6 +8,7 @@ export interface RouteDef {
   title: string;
   fallback: string;
   nav: boolean;
+  fullBleed?: boolean;
   page: ReturnType<typeof lazyPage>;
 }
 
@@ -15,10 +16,10 @@ const story = lazyPage(() => import('./pages/Story.tsx').then((m) => m.Story as 
 
 export const ROUTES: RouteDef[] = [
   { path: '/', label: 'OnePledge', title: 'OnePledge · one invoice, one pledge', fallback: 'Loading the compiled contract (about 0.5 MB)…', nav: false, page: story },
-  { path: '/demo', label: 'The story', title: 'OnePledge · walkthrough', fallback: 'Loading the compiled contract (about 0.5 MB)…', nav: true, page: story },
+  { path: '/demo', label: 'Demo', title: 'OnePledge · walkthrough', fallback: 'Loading the compiled contract (about 0.5 MB)…', nav: true, page: story },
   {
     path: '/attacks',
-    label: 'Why not a hash registry',
+    label: 'Attacks',
     title: 'OnePledge · why not a hash registry',
     fallback: 'Loading the compiled contract (about 0.5 MB)…',
     nav: true,
@@ -26,7 +27,7 @@ export const ROUTES: RouteDef[] = [
   },
   {
     path: '/live',
-    label: 'Live registry',
+    label: 'Live',
     title: 'OnePledge · live on Midnight Preprod',
     fallback: "Loading the contract's ledger reader and Midnight's ledger runtime (about 5 MB, cached after the first visit)…",
     nav: true,

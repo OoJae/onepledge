@@ -1,7 +1,8 @@
 // SPDX-License-Identifier: Apache-2.0
 import { Suspense, useEffect, useRef } from 'react';
+import { Footer, Masthead, SkipLink } from './components/Masthead.tsx';
 import { usePath, useLoadedPage } from './router.ts';
-import { ROUTES, routeFor, type RouteDef } from './routes.ts';
+import { routeFor, type RouteDef } from './routes.ts';
 
 function PageHost({ route }: { route: RouteDef }) {
   const Page = useLoadedPage(route.page);
@@ -33,37 +34,23 @@ export function App() {
   }, [route]);
 
   return (
-    <div className="shell">
-      <header className="masthead">
-        <a className="brand" href="/">
-          <span className="brand-mark" aria-hidden>1</span>
-          OnePledge
-        </a>
-        <nav>
-          {ROUTES.filter((r) => r.nav).map((r) => (
-            <a key={r.path} href={r.path} aria-current={r.path === route.path ? 'page' : undefined}>
-              {r.label}
-            </a>
-          ))}
-        </nav>
-      </header>
-      <main ref={main}>
+    <div className="app">
+      <SkipLink />
+      <Masthead path={route.path} />
+      <main id="main" ref={main} tabIndex={-1}>
         <Suspense
           fallback={
-            <p className="muted" role="status">
+            <p className="container loading muted" role="status">
               {route.fallback}
             </p>
           }
         >
-          <div data-route={route.path}>
+          <div data-route={route.path} className={route.fullBleed ? 'page page-full' : 'page container'}>
             <PageHost route={route} />
           </div>
         </Suspense>
       </main>
-      <footer className="footer">
-        <span>This project is built on the Midnight Network. · Compact 0.31.1 · Apache-2.0</span>
-        <span>Invoice numbers shown are synthetic KSeF-format numbers.</span>
-      </footer>
+      <Footer />
     </div>
   );
 }
