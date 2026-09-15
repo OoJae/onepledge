@@ -164,8 +164,24 @@ button {
 
 button.danger { background: var(--danger); border-color: var(--danger); }
 button.ghost { background: transparent; color: var(--ink-soft); border-color: var(--rule); }
-button:disabled { opacity: 0.35; cursor: not-allowed; }
-button:not(:disabled):hover { filter: brightness(1.08); }
+button:disabled, button[aria-disabled="true"] { opacity: 0.35; cursor: not-allowed; }
+button:not(:disabled):not([aria-disabled="true"]):hover { filter: brightness(1.08); }
+
+.notice {
+  display: flex;
+  gap: 10px;
+  align-items: baseline;
+  margin: 0 0 16px;
+  padding: 10px 14px;
+  border-radius: 8px;
+  background: var(--accent-soft);
+  color: var(--ink);
+  font-size: 14px;
+}
+.notice-dot { flex: none; width: 8px; height: 8px; border-radius: 50%; background: var(--accent); transform: translateY(-1px); }
+.notice a, .card a { color: var(--accent); font-weight: 600; }
+.seen:focus { outline: none; }
+.seen:focus-visible { outline: 2px solid var(--accent); outline-offset: 4px; border-radius: 4px; }
 .card > button { margin-top: 12px; }
 
 .columns {

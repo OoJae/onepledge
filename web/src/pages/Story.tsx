@@ -82,6 +82,15 @@ export function Story() {
         </dl>
       </section>
 
+      <p className="notice">
+        <span className="notice-dot" aria-hidden />
+        <span>
+          This walkthrough runs the real compiled Compact circuits in your browser against an in-memory ledger: no
+          transactions are sent. The same contract is deployed on Midnight Preprod: see the{' '}
+          <a href="#/live">Live registry</a>.
+        </span>
+      </p>
+
       <section className="actions">
         <button ref={buttons[0]} onClick={pledgeA} disabled={step !== 'start'}>1 · Pledge to Lender A</button>
         <button ref={buttons[1]} onClick={pledgeB} disabled={step !== 'pledged'} className="danger">2 · Try it again at Lender B</button>
@@ -135,23 +144,21 @@ export function Story() {
 
       <section className="card" ref={logRef}>
         <h2>Circuit log</h2>
-        {log.length === 0 ? (
-          <p className="muted">Each button runs the compiled Compact circuit. Results appear here.</p>
-        ) : (
-          <ol className="log" aria-live="polite">
-            {log.map((entry, i) => (
-              <li key={i} className={entry.outcome.ok ? 'ok' : 'rejected'}>
-                <span className="badge">{entry.outcome.ok ? 'accepted' : 'rejected'}</span>
-                <span>{entry.label}</span>
-                <span className="mono muted">{entry.outcome.detail}</span>
-              </li>
-            ))}
-          </ol>
-        )}
+        {log.length === 0 && <p className="muted">Each button runs the compiled Compact circuit. Results appear here.</p>}
+        <ol className="log" aria-live="polite" hidden={log.length === 0}>
+          {log.map((entry, i) => (
+            <li key={i} className={entry.outcome.ok ? 'ok' : 'rejected'}>
+              <span className="badge">{entry.outcome.ok ? 'accepted' : 'rejected'}</span>
+              <span>{entry.label}</span>
+              <span className="mono muted">{entry.outcome.detail}</span>
+            </li>
+          ))}
+        </ol>
         <p className="muted small">
           Tag {short(hex(run.attestation.tag))} · every pledge carries a fresh signature from the tag authority,
           verified inside the circuit. This page runs the compiled circuits against an in-memory ledger: no proofs are
-          generated and nothing goes on chain. The same flow runs on Preprod from the CLI. See Live registry.
+          generated and nothing goes on chain. The same flow runs on Preprod from the CLI: see the{' '}
+          <a href="#/live">Live registry</a>.
         </p>
       </section>
     </>

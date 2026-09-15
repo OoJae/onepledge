@@ -175,13 +175,19 @@ export function Live() {
           )}
         </dl>
         <div className="row">
-          <button className="ghost" onClick={() => void read()} disabled={status === 'loading'} aria-busy={status === 'loading'}>
+          <button
+            className="ghost"
+            onClick={() => status !== 'loading' && void read()}
+            aria-disabled={status === 'loading'}
+            aria-busy={status === 'loading'}
+          >
             {status === 'loading' ? 'Reading the indexer…' : 'Read again'}
           </button>
           <span className="muted small" role="status" aria-live="polite">
             {status === 'loading' && 'Contacting the Preprod indexer…'}
             {status === 'ok' && snapshot && `State read at ${snapshot.readAt.slice(11, 19)} UTC${snapshot.latestBlock ? `, latest contract action in block ${snapshot.latestBlock}` : ''}.`}
-            {status === 'error' && `Could not read the indexer (${error}).${snapshot ? ' Showing the last successful read.' : ''}`}
+            {status === 'error' &&
+              `The public Preprod indexer did not answer (${error}). ${snapshot ? 'Showing the last successful read. ' : ''}Try "Read again"; the recorded transactions below still link to the explorer.`}
           </span>
         </div>
         {snapshot && snapshot.mismatches.length > 0 && (
@@ -276,7 +282,7 @@ function TagCheck({ tags }: { tags: string[] }) {
       <p role="status" aria-live="polite" className={valid ? (found ? 'error' : 'ok-text') : 'muted small'}>
         {!value && 'Paste a tag to check it.'}
         {value && !valid && 'A tag is 32 bytes, written as 64 hex characters.'}
-        {valid && found && 'Encumbered: this receivable has already been pledged in this registry. Do not fund it.'}
+        {valid && found && 'Encumbered: this receivable has been pledged in this registry (tags stay after release). Do not fund it.'}
         {valid && !found && 'Not pledged in this registry yet.'}
       </p>
     </section>

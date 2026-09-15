@@ -1,5 +1,5 @@
 // SPDX-License-Identifier: Apache-2.0
-import { useMemo, useState } from 'react';
+import { useEffect, useMemo, useRef, useState } from 'react';
 import { KsefNumberError, parseKsefNumber, receivableTag } from '@onepledge/attester';
 import { randomBytes, utf8ToBytes } from '@noble/hashes/utils.js';
 import { sha256 } from '@noble/hashes/sha2.js';
@@ -73,7 +73,7 @@ function Bypass() {
           different hash, so the registry sees a brand-new invoice.
         </p>
         <button className="danger" onClick={attackNaive} disabled={naiveResult.length > 0}>Pledge it twice</button>
-        <ul className="seen">{naiveResult.map((l) => <li key={l}>{l}</li>)}</ul>
+        <Results lines={naiveResult} />
       </article>
       <article className="card column">
         <h2>Same attack on OnePledge</h2>
@@ -82,8 +82,8 @@ function Bypass() {
           The identifier is the KSeF number the state e-invoicing system assigned. The tag authority accepts exactly
           one spelling and tags that. Any re-attestation of the same invoice yields the same tag.
         </p>
-        <button onClick={attackOnePledge} disabled={onePledgeResult.length > 0}>Try it</button>
-        <ul className="seen">{onePledgeResult.map((l) => <li key={l}>{l}</li>)}</ul>
+        <button onClick={attackOnePledge} disabled={onePledgeResult.length > 0}>Try the reformatting attack on OnePledge</button>
+        <Results lines={onePledgeResult} />
       </article>
     </section>
   );
@@ -145,7 +145,7 @@ function Snooping() {
           public registry. It learns which suppliers factor which invoices, and when.
         </p>
         <button className="danger" onClick={snoopNaive} disabled={findings.length > 0}>Check {population.invoices.length} invoices</button>
-        <ul className="seen">{findings.map((l) => <li key={l}>{l}</li>)}</ul>
+        <Results lines={findings} />
         <p className="muted small mono">{population.registry.hashes().slice(0, 2).map((h) => short(h)).join(' · ')} …</p>
       </article>
       <article className="card column">
@@ -155,8 +155,8 @@ function Snooping() {
           Tags are HMAC-SHA256 under the tag authority's secret. This runs the real registry in your browser: pledge an
           invoice, then try to find it in the public tag set knowing only its number.
         </p>
-        <button onClick={snoopOnePledge} disabled={onePledge.length > 0}>Try it</button>
-        <ul className="seen">{onePledge.map((l) => <li key={l}>{l}</li>)}</ul>
+        <button onClick={snoopOnePledge} disabled={onePledge.length > 0}>Try the snooping attack on OnePledge</button>
+        <Results lines={onePledge} />
         <p className="muted small">
           Limits, stated plainly: the tag authority computes tags, so it can see whether its invoices were pledged; and
           anyone a borrower hands a tag can keep checking it. Wave 3 splits the authority into a threshold committee.
@@ -166,3 +166,15 @@ function Snooping() {
   );
 }
 
+// Results are announced, and keyboard focus moves to them because the button that produced them disables itself.
+function Results({ lines }: { lines: string[] }) {
+  const list = useRef<HTMLUListElement>(null);
+  useEffect(() => {
+    if (lines.length > 0) list.current?.focus();
+  }, [lines.length]);
+  return (
+    <ul className="seen" ref={list} tabIndex={-1} aria-live="polite">
+      {lines.map((l) => <li key={l}>{l}</li>)}
+    </ul>
+  );
+}

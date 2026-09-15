@@ -14,7 +14,14 @@ const routes = {
 
 type Route = keyof typeof routes;
 
-const currentRoute = (): Route => (window.location.hash in routes ? (window.location.hash as Route) : '#/');
+const currentRoute = (): Route => {
+  // Accept near-misses such as #live, #/live/ and #/Live; send anything else to the story and fix the URL.
+  const raw = window.location.hash || '#/';
+  const normalized = ('#/' + raw.replace(/^#\/?/, '').replace(/\/+$/, '').toLowerCase()) as Route;
+  const route = normalized in routes ? normalized : '#/';
+  if (raw !== route) window.history.replaceState(null, '', route);
+  return route;
+};
 
 export function App() {
   const [route, setRoute] = useState<Route>(currentRoute);
@@ -37,7 +44,7 @@ export function App() {
     let tries = 0;
     const timer = window.setInterval(() => {
       const heading = main.current?.querySelector<HTMLElement>(`[data-route="${route}"] h1`);
-      if (heading || ++tries > 40) {
+      if (heading || ++tries > 400) {
         window.clearInterval(timer);
         heading?.focus();
         window.scrollTo(0, 0);
@@ -65,7 +72,9 @@ export function App() {
         <Suspense
           fallback={
             <p className="muted" role="status">
-              Loading the compiled contract and Midnight's ledger runtime (about 5 MB, cached after the first visit)…
+              {route === '#/live'
+                ? "Loading the contract's ledger reader and Midnight's ledger runtime (about 5 MB, cached after the first visit)…"
+                : 'Loading the compiled contract (about 0.5 MB)…'}
             </p>
           }
         >
@@ -75,7 +84,7 @@ export function App() {
         </Suspense>
       </main>
       <footer className="footer">
-        <span>Built on Midnight · Compact 0.31.1 · Apache-2.0</span>
+        <span>This project is built on the Midnight Network. · Compact 0.31.1 · Apache-2.0</span>
         <span>Invoice numbers shown are synthetic KSeF-format numbers.</span>
       </footer>
     </div>
