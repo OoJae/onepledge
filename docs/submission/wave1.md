@@ -18,7 +18,7 @@ Privacy · DeFi · Market Infrastructure
 
 - Live demo: https://onepledge.vercel.app
 - GitHub (Wave 1 tag): https://github.com/OoJae/onepledge/tree/wave-1
-- Demo video: {{VIDEO_URL}}
+- Demo video: https://youtu.be/tftA-AMT9VQ
 - Deck: https://github.com/OoJae/onepledge/blob/wave-1/docs/OnePledge-Wave1-deck.pdf
 - Registry v2 on Midnight Preprod: https://preprod.midnightexplorer.com/contracts/567df565569f032c0a32a0029fb2fdea9befb8b8ccccb3fb86736f10030c2355
 - Security review: https://github.com/OoJae/onepledge/blob/wave-1/docs/security-review.md

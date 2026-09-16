@@ -12,7 +12,7 @@ This project is built on the Midnight Network.
 | Start here (3 minutes, no install) | 1. [Walkthrough](https://onepledge.vercel.app/demo): pledge, refused double pledge, release. 2. [Attacks](https://onepledge.vercel.app/attacks): why a public hash registry fails. 3. [Live registry](https://onepledge.vercel.app/live): the deployed Preprod contract, read in your browser. Then [How to evaluate](#how-to-evaluate). |
 | Live demo | [onepledge.vercel.app](https://onepledge.vercel.app): the landing page's 3D scene tells the pledge in four beats; the walkthrough runs the compiled circuits in your browser; the Live page reads Preprod |
 | Proof | Registry v2 [on Preprod](#live-on-midnight-preprod) with 6 transactions · `npm run verify:onchain` matches every verifier key · 176 tests in CI · our own review found and fixed a critical bug ([F01](docs/security-review.md#f01-critical-one-attestation-could-be-pledged-256-times)) |
-| Demo video | _added at submission_ |
+| Demo video | [youtu.be/tftA-AMT9VQ](https://youtu.be/tftA-AMT9VQ) (1:42): the problem, the refused second pledge, and the six Preprod transactions |
 | Deck | [docs/OnePledge-Wave1-deck.pdf](docs/OnePledge-Wave1-deck.pdf) |
 | Security review | [docs/security-review.md](docs/security-review.md) · [threat model](docs/threat-model.md) |
 | Brand | [onepledge.vercel.app/brand](https://onepledge.vercel.app/brand) · [docs/brand](docs/brand/README.md) (mark, lockups, tokens, type, guilloché) |
