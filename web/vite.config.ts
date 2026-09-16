@@ -22,7 +22,13 @@ export default defineConfig(({ mode }) => ({
   },
   optimizeDeps: { exclude: ['@midnight-ntwrk/onchain-runtime-v3'] },
   // assetsInlineLimit 0: inlined data: fonts would violate the CSP (no data: in font-src).
-  build: { target: 'esnext', assetsInlineLimit: 0, commonjsOptions: { transformMixedEsModules: true } },
+  // cssTarget: without a browser target Lightning CSS drops the -webkit- prefixes it would otherwise re-emit.
+  build: {
+    target: 'esnext',
+    cssTarget: ['chrome107', 'edge107', 'firefox104', 'safari16'],
+    assetsInlineLimit: 0,
+    commonjsOptions: { transformMixedEsModules: true },
+  },
   preview: { headers: hostedHeaders },
   server: {
     fs: {

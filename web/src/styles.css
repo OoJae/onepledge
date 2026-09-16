@@ -101,8 +101,9 @@ main:focus {
   top: 0;
   z-index: 50;
   background: color-mix(in srgb, var(--ink) 78%, transparent);
-  backdrop-filter: blur(14px) saturate(1.2);
+  /* Prefixed first: Lightning CSS keeps the last of the two spellings, and the standard property is the one Chrome, Firefox and Edge read. */
   -webkit-backdrop-filter: blur(14px) saturate(1.2);
+  backdrop-filter: blur(14px) saturate(1.2);
   border-bottom: 1px solid color-mix(in srgb, var(--rule) 70%, transparent);
   view-transition-name: masthead;
 }
