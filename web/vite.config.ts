@@ -19,8 +19,22 @@ export default defineConfig(({ mode }) => ({
   plugins: [wasm(), react()],
   resolve: {
     alias: { 'isomorphic-ws': fileURLToPath(new URL('./src/isomorphic-ws.ts', import.meta.url)) },
+    // dedupe: wasm-bindgen ties class identity to the WASM instance that created an object. contract,
+    // attester and web each depend on compact-runtime, and a second instance makes every cross-instance
+    // instanceof silently false, so circuits fail in the browser only. Node resolves one copy, so the CLI
+    // and the test suite pass while the page throws "Error executing circuit".
+    dedupe: ['@midnight-ntwrk/compact-runtime', '@midnight-ntwrk/onchain-runtime-v3'],
   },
-  optimizeDeps: { exclude: ['@midnight-ntwrk/onchain-runtime-v3'] },
+  // exclude: the WASM glue calls __wbindgen_start() at module top level. Vite's dev-time dependency
+  // optimizer rewrites that init order and the page renders blank. Dev server only; builds are unaffected.
+  optimizeDeps: {
+    exclude: [
+      '@midnight-ntwrk/compact-runtime',
+      '@midnight-ntwrk/onchain-runtime-v3',
+      '@midnight-ntwrk/ledger-v8',
+      '@midnight-ntwrk/zkir-v2',
+    ],
+  },
   // assetsInlineLimit 0: inlined data: fonts would violate the CSP (no data: in font-src).
   // cssTarget: without a browser target Lightning CSS drops the -webkit- prefixes it would otherwise re-emit.
   build: {

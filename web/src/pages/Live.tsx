@@ -36,8 +36,14 @@ const deployments = Object.values(
   import.meta.glob<{ default: Deployment }>('../../../deployments/preprod.json', { eager: true }),
 ).map((m) => m.default);
 
-const INDEXER = 'https://indexer.preprod.midnight.network/api/v4/graphql';
-const INDEXER_WS = 'wss://indexer.preprod.midnight.network/api/v4/graphql/ws';
+// Same-origin proxy (web/api/indexer.js) onto the Blockfrost Preprod indexer. The Midnight-hosted
+// indexer was decommissioned on 2026-10-09 and Blockfrost needs a project token, which the proxy holds
+// server-side so it never ships in the bundle. Same-origin also keeps the page inside `connect-src 'self'`.
+const INDEXER = '/api/indexer';
+// graphql-ws connects lazily and this page only issues queries, so no socket is opened. The URL is still
+// required by the provider's signature; subscriptions would need a proxy that upgrades.
+const INDEXER_WS =
+  typeof window === 'undefined' ? 'wss://localhost/api/indexer' : `wss://${window.location.host}/api/indexer`;
 const EXPLORER = 'https://preprod.midnightexplorer.com';
 const TIMEOUT_MS = 15_000;
 

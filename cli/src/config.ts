@@ -18,12 +18,33 @@ export interface NetworkConfig {
   readonly networkId: string;
 }
 
+// indexer.preprod.midnight.network was decommissioned on 2026-10-09 (HTTP 410) and Blockfrost now
+// serves the Preprod indexer and node RPC. Every request carries a Midnight Preprod project token as a
+// query parameter: the wallet SDK's indexer client and the Polkadot WsProvider take plain URLs, and a
+// browser WebSocket cannot set headers.
+const withBlockfrostKey = (url: string): string => {
+  const token = process.env.BLOCKFROST_PROJECT_ID?.trim();
+  if (!token) {
+    throw new Error(
+      'BLOCKFROST_PROJECT_ID is not set. Create a Midnight Preprod project at https://blockfrost.io ' +
+        'and export its project id, or run against the local devnet with ONEPLEDGE_NETWORK=undeployed.',
+    );
+  }
+  return `${url}?project_id=${encodeURIComponent(token)}`;
+};
+
 export const preprod: NetworkConfig = {
   name: 'preprod',
-  // ONEPLEDGE_INDEXER / ONEPLEDGE_INDEXER_WS point the CLI at your own indexer instead of the public one.
-  indexer: process.env.ONEPLEDGE_INDEXER ?? 'https://indexer.preprod.midnight.network/api/v4/graphql',
-  indexerWS: process.env.ONEPLEDGE_INDEXER_WS ?? 'wss://indexer.preprod.midnight.network/api/v4/graphql/ws',
-  node: 'wss://rpc.preprod.midnight.network',
+  // ONEPLEDGE_INDEXER / ONEPLEDGE_INDEXER_WS point the CLI at your own indexer instead of Blockfrost.
+  get indexer() {
+    return process.env.ONEPLEDGE_INDEXER ?? withBlockfrostKey('https://midnight-preprod.blockfrost.io/api/v0');
+  },
+  get indexerWS() {
+    return process.env.ONEPLEDGE_INDEXER_WS ?? withBlockfrostKey('wss://midnight-preprod.blockfrost.io/api/v0/ws');
+  },
+  get node() {
+    return process.env.ONEPLEDGE_NODE ?? withBlockfrostKey('wss://rpc.midnight-preprod.blockfrost.io');
+  },
   proofServer: process.env.PROOF_SERVER_URL ?? 'http://127.0.0.1:6300',
   networkId: 'preprod',
 };
