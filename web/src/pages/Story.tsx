@@ -2,7 +2,7 @@
 import { useEffect, useMemo, useRef, useState } from 'react';
 import { Walkthrough, hex, short, type Outcome } from '../engine.ts';
 
-type Step = 'start' | 'pledged' | 'doubled' | 'released';
+type Step = 'start' | 'pledged' | 'doubled' | 'accepted' | 'declined' | 'released' | 'repledged';
 
 const pln = (grosz: string) =>
   (Number(grosz) / 100).toLocaleString('pl-PL', { style: 'currency', currency: 'PLN', maximumFractionDigits: 0 });
@@ -14,12 +14,20 @@ export function Story() {
   const [noteSalt, setNoteSalt] = useState<Uint8Array | null>(null);
   const [, force] = useState(0);
   const view = useMemo(() => run.publicView(), [run, step, log]);
-  const buttons = [useRef<HTMLButtonElement>(null), useRef<HTMLButtonElement>(null), useRef<HTMLButtonElement>(null), useRef<HTMLButtonElement>(null)];
+  const buttons = [
+    useRef<HTMLButtonElement>(null),
+    useRef<HTMLButtonElement>(null),
+    useRef<HTMLButtonElement>(null),
+    useRef<HTMLButtonElement>(null),
+    useRef<HTMLButtonElement>(null),
+    useRef<HTMLButtonElement>(null),
+    useRef<HTMLButtonElement>(null),
+  ];
   const logRef = useRef<HTMLElement>(null);
 
   // Keep keyboard focus on the next action after a button disables itself.
   useEffect(() => {
-    const next = { start: 0, pledged: 1, doubled: 2, released: 3 }[step];
+    const next = { start: 0, pledged: 1, doubled: 2, accepted: 4, declined: 4, released: 5, repledged: 5 }[step];
     if (log.length > 0) buttons[next].current?.focus();
     if (log.length > 0 && window.matchMedia('(max-width: 860px)').matches) logRef.current?.scrollIntoView({ block: 'nearest' });
     // eslint-disable-next-line react-hooks/exhaustive-deps
@@ -42,10 +50,29 @@ export function Story() {
     setStep('doubled');
   };
 
+  const decide = (decision: 'accept' | 'decline') => () => {
+    if (!noteSalt) return;
+    const outcome = run.decideByA(decision, noteSalt);
+    push(
+      decision === 'accept'
+        ? 'Lender A accepts the pledge'
+        : 'Lender A declines the pledge, freeing the receivable',
+      outcome,
+    );
+    if (outcome.ok) setStep(decision === 'accept' ? 'accepted' : 'declined');
+  };
+
   const release = () => {
     if (!noteSalt) return;
     push('Lender A releases the pledge (invoice paid)', run.releaseByA(noteSalt));
     setStep('released');
+  };
+
+  const repledgeB = () => {
+    const outcome = run.pledgeTo('B');
+    if (outcome.ok) setNoteSalt(run.noteSalt);
+    push('Borrower pledges the freed invoice to Lender B', outcome);
+    if (outcome.ok) setStep('repledged');
   };
 
   const reset = () => {
@@ -94,8 +121,11 @@ export function Story() {
       <section className="actions">
         <button ref={buttons[0]} onClick={pledgeA} disabled={step !== 'start'}>1 · Pledge to Lender A</button>
         <button ref={buttons[1]} onClick={pledgeB} disabled={step !== 'pledged'} className="danger">2 · Try it again at Lender B</button>
-        <button ref={buttons[2]} onClick={release} disabled={step !== 'doubled'}>3 · Lender A releases (paid)</button>
-        <button ref={buttons[3]} onClick={reset} className="ghost">Start over</button>
+        <button ref={buttons[2]} onClick={decide('accept')} disabled={step !== 'doubled'}>3 · Lender A accepts</button>
+        <button ref={buttons[3]} onClick={decide('decline')} disabled={step !== 'doubled'} className="danger">3 · Lender A declines</button>
+        <button ref={buttons[4]} onClick={release} disabled={step !== 'accepted'}>4 · Lender A releases (paid)</button>
+        <button ref={buttons[5]} onClick={repledgeB} disabled={step !== 'declined'}>4 · Pledge the freed invoice to Lender B</button>
+        <button ref={buttons[6]} onClick={reset} className="ghost">Start over</button>
       </section>
 
       <section className="columns">
@@ -132,12 +162,15 @@ export function Story() {
           <p className="role">The public Midnight ledger</p>
           <dl className="facts stacked">
             <div><dt>Pledges</dt><dd>{view.pledgeCount.toString()}</dd></div>
+            <div><dt>Accepted</dt><dd>{view.acceptCount.toString()}</dd></div>
+            <div><dt>Declined</dt><dd>{view.declineCount.toString()}</dd></div>
             <div><dt>Releases</dt><dd>{view.releaseCount.toString()}</dd></div>
             <div><dt>Tags</dt><dd className="mono">{view.tags.length ? view.tags.map((t) => short(t)).join(', ') : 'none'}</dd></div>
           </dl>
           <p className="muted small">
             A tag is a keyed hash of the KSeF number. Without the tag authority's key, nobody can turn an invoice
-            number into its tag, so the set cannot be searched by guessing numbers.
+            number into its tag, so the set cannot be searched by guessing numbers. A decision is recorded as an
+            opaque nullifier: the counts move, but the ledger never says which lender decided, or on what.
           </p>
         </article>
       </section>

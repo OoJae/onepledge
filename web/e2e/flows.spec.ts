@@ -4,20 +4,37 @@ import { expect, test } from '@playwright/test';
 import AxeBuilder from '@axe-core/playwright';
 import { brandRoutes, routes, watchPage } from './helpers.ts';
 
-test('walkthrough: pledge accepted, double pledge refused, release accepted', async ({ page }) => {
+test('walkthrough: pledge accepted, double pledge refused, lender accepts, release accepted', async ({ page }) => {
   const problems = await watchPage(page);
   await page.goto(routes.demo);
   await expect(page.getByRole('heading', { level: 1 })).toContainText('One invoice');
-  const pledge = page.getByRole('button', { name: /Pledge to Lender A/ });
-  await pledge.click();
+  await page.getByRole('button', { name: /Pledge to Lender A/ }).click();
   await expect(page.getByText('Pledged to lender A')).toBeVisible();
   await expect(page.getByRole('button', { name: /Try it again at Lender B/ })).toBeFocused();
   await page.getByRole('button', { name: /Try it again at Lender B/ }).click();
   await expect(page.getByText('Receivable already pledged').first()).toBeVisible();
+  await page.getByRole('button', { name: /Lender A accepts/ }).click();
+  await expect(page.getByText('Accepted by lender A')).toBeVisible();
   await page.getByRole('button', { name: /Lender A releases/ }).click();
   await expect(page.getByText('Released by lender A')).toBeVisible();
   await page.getByRole('button', { name: 'Start over' }).click();
   await expect(page.getByText('Pledged to lender A')).toHaveCount(0);
+  expect(await problems()).toEqual([]);
+});
+
+test('walkthrough: a declined pledge frees the receivable for another lender', async ({ page }) => {
+  const problems = await watchPage(page);
+  await page.goto(routes.demo);
+  await page.getByRole('button', { name: /Pledge to Lender A/ }).click();
+  await page.getByRole('button', { name: /Try it again at Lender B/ }).click();
+  await expect(page.getByText('Receivable already pledged').first()).toBeVisible();
+
+  // The void path: until Wave 2 this receivable was burned forever.
+  await page.getByRole('button', { name: /Lender A declines/ }).click();
+  await expect(page.getByText(/the receivable is free again/)).toBeVisible();
+
+  await page.getByRole('button', { name: /Pledge the freed invoice to Lender B/ }).click();
+  await expect(page.getByText('Pledged to lender B')).toBeVisible();
   expect(await problems()).toEqual([]);
 });
 

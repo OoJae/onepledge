@@ -31,6 +31,8 @@ export type Outcome = { ok: true; detail: string } | { ok: false; detail: string
 export interface PublicView {
   pledgeCount: bigint;
   releaseCount: bigint;
+  acceptCount: bigint;
+  declineCount: bigint;
   tags: string[];
   noteCount: bigint;
   lastTranscriptOps: number;
@@ -107,6 +109,21 @@ export class Walkthrough {
     );
   }
 
+  /** The lender of record takes the pledge. Until this runs, a pledge is a one-sided claim. */
+  decideByA(decision: 'accept' | 'decline', noteSalt: Uint8Array): Outcome {
+    this.asLenderA(noteSalt);
+    return decision === 'accept'
+      ? this.attempt(() => this.sim.acceptPledge(), 'Accepted by lender A')
+      : this.attempt(() => this.sim.declinePledge(), 'Declined by lender A; the receivable is free again');
+  }
+
+  private asLenderA(noteSalt: Uint8Array): void {
+    this.sim.as({
+      secretKey: this.lenderA,
+      releaseNote: { tag: this.attestation.tag, invoiceCommit: this.attestation.invoiceCommit, salt: noteSalt },
+    });
+  }
+
   releaseByA(noteSalt: Uint8Array): Outcome {
     this.sim.as({
       secretKey: this.lenderA,
@@ -129,6 +146,8 @@ export class Walkthrough {
     return {
       pledgeCount: l.pledgeCount,
       releaseCount: l.releaseCount,
+      acceptCount: l.acceptCount,
+      declineCount: l.declineCount,
       tags: [...l.tags].map(hex),
       noteCount: l.notes.firstFree(),
       lastTranscriptOps: this.sim.lastResult?.proofData.publicTranscript.length ?? 0,
