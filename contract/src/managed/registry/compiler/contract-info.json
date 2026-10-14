@@ -97,6 +97,31 @@
       }
     },
     {
+      "name": "decisionNullifier",
+      "pure": true,
+      "proof": false,
+      "arguments": [
+        {
+          "name": "note",
+          "type": {
+            "type-name": "Bytes",
+            "length": 32
+          }
+        },
+        {
+          "name": "lenderSecret",
+          "type": {
+            "type-name": "Bytes",
+            "length": 32
+          }
+        }
+      ],
+      "result-type": {
+        "type-name": "Bytes",
+        "length": 32
+      }
+    },
+    {
       "name": "releaseNullifier",
       "pure": true,
       "proof": false,
@@ -279,6 +304,30 @@
     },
     {
       "name": "release",
+      "pure": false,
+      "proof": true,
+      "arguments": [
+      ],
+      "result-type": {
+        "type-name": "Tuple",
+        "types": [
+        ]
+      }
+    },
+    {
+      "name": "acceptPledge",
+      "pure": false,
+      "proof": true,
+      "arguments": [
+      ],
+      "result-type": {
+        "type-name": "Tuple",
+        "types": [
+        ]
+      }
+    },
+    {
+      "name": "declinePledge",
       "pure": false,
       "proof": true,
       "arguments": [
@@ -622,14 +671,46 @@
       }
     },
     {
-      "name": "pledgeCount",
+      "name": "accepted",
       "index": 8,
+      "exported": true,
+      "storage": "Set",
+      "type": {
+        "type-name": "Bytes",
+        "length": 32
+      }
+    },
+    {
+      "name": "declined",
+      "index": 9,
+      "exported": true,
+      "storage": "Set",
+      "type": {
+        "type-name": "Bytes",
+        "length": 32
+      }
+    },
+    {
+      "name": "pledgeCount",
+      "index": 10,
       "exported": true,
       "storage": "Counter"
     },
     {
       "name": "releaseCount",
-      "index": 9,
+      "index": 11,
+      "exported": true,
+      "storage": "Counter"
+    },
+    {
+      "name": "acceptCount",
+      "index": 12,
+      "exported": true,
+      "storage": "Counter"
+    },
+    {
+      "name": "declineCount",
+      "index": 13,
       "exported": true,
       "storage": "Counter"
     }

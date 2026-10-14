@@ -103,7 +103,11 @@ const counterFor = async (circuit: string) => {
   const state = await providers.publicDataProvider.queryContractState(record.contractAddress);
   if (!state) throw new Error('Contract state not found');
   const l = Registry.ledger(state.data);
-  return circuit === 'admitLender' ? l.lenders.firstFree() : circuit === 'release' ? l.releaseCount : l.pledgeCount;
+  if (circuit === 'admitLender') return l.lenders.firstFree();
+  if (circuit === 'release') return l.releaseCount;
+  if (circuit === 'acceptPledge') return l.acceptCount;
+  if (circuit === 'declinePledge') return l.declineCount;
+  return l.pledgeCount;
 };
 
 const submit = async (circuit: string, call: () => Promise<{ public: TxPublic }>) => {

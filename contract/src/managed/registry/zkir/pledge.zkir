@@ -395,7 +395,7 @@
     { "op": "declare_pub_input", "var": 136 },
     { "op": "declare_pub_input", "var": 2 },
     { "op": "declare_pub_input", "var": 2 },
-    { "op": "declare_pub_input", "var": 64 },
+    { "op": "declare_pub_input", "var": 149 },
     { "op": "pi_skip", "guard": 2, "count": 4 },
     { "op": "declare_pub_input", "var": 148 },
     { "op": "declare_pub_input", "var": 2 },

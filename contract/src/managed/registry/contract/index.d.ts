@@ -50,6 +50,8 @@ export type ImpureCircuits<PS> = {
                   next_0: Uint8Array): __compactRuntime.CircuitResults<PS, []>;
   pledge(context: __compactRuntime.CircuitContext<PS>, lender_0: Uint8Array): __compactRuntime.CircuitResults<PS, Uint8Array>;
   release(context: __compactRuntime.CircuitContext<PS>): __compactRuntime.CircuitResults<PS, []>;
+  acceptPledge(context: __compactRuntime.CircuitContext<PS>): __compactRuntime.CircuitResults<PS, []>;
+  declinePledge(context: __compactRuntime.CircuitContext<PS>): __compactRuntime.CircuitResults<PS, []>;
 }
 
 export type ProvableCircuits<PS> = {
@@ -58,6 +60,8 @@ export type ProvableCircuits<PS> = {
                   next_0: Uint8Array): __compactRuntime.CircuitResults<PS, []>;
   pledge(context: __compactRuntime.CircuitContext<PS>, lender_0: Uint8Array): __compactRuntime.CircuitResults<PS, Uint8Array>;
   release(context: __compactRuntime.CircuitContext<PS>): __compactRuntime.CircuitResults<PS, []>;
+  acceptPledge(context: __compactRuntime.CircuitContext<PS>): __compactRuntime.CircuitResults<PS, []>;
+  declinePledge(context: __compactRuntime.CircuitContext<PS>): __compactRuntime.CircuitResults<PS, []>;
 }
 
 export type PureCircuits = {
@@ -68,6 +72,7 @@ export type PureCircuits = {
                  lender_0: Uint8Array,
                  invoiceCommit_0: Uint8Array,
                  salt_0: Uint8Array): Uint8Array;
+  decisionNullifier(note_0: Uint8Array, lenderSecret_0: Uint8Array): Uint8Array;
   releaseNullifier(note_0: Uint8Array, lenderSecret_0: Uint8Array): Uint8Array;
   attestationMessage(registry_0: Uint8Array,
                      tag_0: Uint8Array,
@@ -91,6 +96,9 @@ export type Circuits<PS> = {
                  lender_0: Uint8Array,
                  invoiceCommit_0: Uint8Array,
                  salt_0: Uint8Array): __compactRuntime.CircuitResults<PS, Uint8Array>;
+  decisionNullifier(context: __compactRuntime.CircuitContext<PS>,
+                    note_0: Uint8Array,
+                    lenderSecret_0: Uint8Array): __compactRuntime.CircuitResults<PS, Uint8Array>;
   releaseNullifier(context: __compactRuntime.CircuitContext<PS>,
                    note_0: Uint8Array,
                    lenderSecret_0: Uint8Array): __compactRuntime.CircuitResults<PS, Uint8Array>;
@@ -112,6 +120,8 @@ export type Circuits<PS> = {
                   next_0: Uint8Array): __compactRuntime.CircuitResults<PS, []>;
   pledge(context: __compactRuntime.CircuitContext<PS>, lender_0: Uint8Array): __compactRuntime.CircuitResults<PS, Uint8Array>;
   release(context: __compactRuntime.CircuitContext<PS>): __compactRuntime.CircuitResults<PS, []>;
+  acceptPledge(context: __compactRuntime.CircuitContext<PS>): __compactRuntime.CircuitResults<PS, []>;
+  declinePledge(context: __compactRuntime.CircuitContext<PS>): __compactRuntime.CircuitResults<PS, []>;
 }
 
 export type Ledger = {
@@ -149,8 +159,22 @@ export type Ledger = {
     member(elem_0: Uint8Array): boolean;
     [Symbol.iterator](): Iterator<Uint8Array>
   };
+  accepted: {
+    isEmpty(): boolean;
+    size(): bigint;
+    member(elem_0: Uint8Array): boolean;
+    [Symbol.iterator](): Iterator<Uint8Array>
+  };
+  declined: {
+    isEmpty(): boolean;
+    size(): bigint;
+    member(elem_0: Uint8Array): boolean;
+    [Symbol.iterator](): Iterator<Uint8Array>
+  };
   readonly pledgeCount: bigint;
   readonly releaseCount: bigint;
+  readonly acceptCount: bigint;
+  readonly declineCount: bigint;
 }
 
 export type ContractReferenceLocations = any;

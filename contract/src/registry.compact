@@ -68,8 +68,15 @@ export ledger tags: Set<Bytes<32>>;
 export ledger notes: HistoricMerkleTree<16, Bytes<32>>;
 // Nullifiers of released notes.
 export ledger releases: Set<Bytes<32>>;
+// A lender decides once per pledge note. Both sets are keyed by the same decision nullifier, which
+// is unlinkable to the note and to the lender, exactly like a release nullifier. Which set it lands
+// in is the decision, and that has to be public: a declined receivable must visibly become free again.
+export ledger accepted: Set<Bytes<32>>;
+export ledger declined: Set<Bytes<32>>;
 export ledger pledgeCount: Counter;
 export ledger releaseCount: Counter;
+export ledger acceptCount: Counter;
+export ledger declineCount: Counter;
 
 witness localSecretKey(): Bytes<32>;
 witness getAttestation(): Attestation;
@@ -106,6 +113,12 @@ export pure circuit lenderKey(sk: Bytes<32>): Bytes<32> {
 export pure circuit noteCommitment(tag: Bytes<32>, lender: Bytes<32>, invoiceCommit: Bytes<32>,
                                    salt: Bytes<32>): Bytes<32> {
   return persistentHash<Vector<5, Bytes<32>>>([pad(32, "onepledge:note:v1"), tag, lender, invoiceCommit, salt]);
+}
+
+// Marks one lender's decision on one note. Domain-separated from the release nullifier so the two
+// can never collide, and keyed on the lender secret so only the lender of record can produce it.
+export pure circuit decisionNullifier(note: Bytes<32>, lenderSecret: Bytes<32>): Bytes<32> {
+  return persistentHash<Vector<3, Bytes<32>>>([pad(32, "onepledge:decision:v1"), note, lenderSecret]);
 }
 
 export pure circuit releaseNullifier(note: Bytes<32>, lenderSecret: Bytes<32>): Bytes<32> {
@@ -203,4 +216,41 @@ export circuit release(): [] {
   assert(!releases.member(nullifier), "Pledge already released");
   releases.insert(nullifier);
   releaseCount.increment(1);
+}
+
+// A lender proves it is the lender of record for a note, the same way release() does: it recomputes
+// the note commitment from its own secret, so no other party can decide on its behalf.
+circuit decideOnOwnNote(): [Bytes<32>, Bytes<32>] {
+  const sk = localSecretKey();
+  const [tag, invoiceCommit, salt] = getNoteOpening();
+  const note = noteCommitment(tag, lenderKey(sk), invoiceCommit, salt);
+
+  const notePath = getNotePath();
+  assert(notePath.leaf == note, "Note path does not match the note opening");
+  assert(notes.checkRoot(disclose(merkleTreePathRoot<16, Bytes<32>>(notePath))), "Unknown pledge note");
+
+  const decision = disclose(decisionNullifier(note, sk));
+  assert(!accepted.member(decision), "Pledge already accepted");
+  assert(!declined.member(decision), "Pledge already declined");
+  // The tag is returned undisclosed on purpose. Only declinePledge discloses it, so accepting can
+  // never say which receivable was accepted even if a future edit stops eliminating the dead value.
+  return [decision, tag];
+}
+
+// The named lender takes the pledge. Until this runs, a borrower's pledge is a one-sided claim.
+export circuit acceptPledge(): [] {
+  const [decision, _tag] = decideOnOwnNote();
+  accepted.insert(decision);
+  acceptCount.increment(1);
+}
+
+// The named lender refuses the pledge, and the receivable becomes pledgeable again. This is the void
+// path: without it a borrower could burn any invoice forever by pledging it to a lender that never
+// agreed to finance it. The tag was already public from the pledge, so removing it discloses nothing
+// new about the invoice; it only stops the registry claiming the receivable is still encumbered.
+export circuit declinePledge(): [] {
+  const [decision, tag] = decideOnOwnNote();
+  declined.insert(decision);
+  tags.remove(disclose(tag));
+  declineCount.increment(1);
 }

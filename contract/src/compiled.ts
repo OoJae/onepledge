@@ -9,7 +9,13 @@ import { CompiledContract } from '@midnight-ntwrk/midnight-js-protocol/compact-j
 import * as Registry from './managed/registry/contract/index.js';
 import { witnesses, type OnePledgePrivateState } from './witnesses.js';
 
-export type RegistryCircuits = 'admitLender' | 'rotateRegistrar' | 'pledge' | 'release';
+export type RegistryCircuits =
+  | 'admitLender'
+  | 'rotateRegistrar'
+  | 'pledge'
+  | 'release'
+  | 'acceptPledge'
+  | 'declinePledge';
 
 export const makeRegistryContract = (zkConfigPath: string) =>
   CompiledContract.make<Registry.Contract<OnePledgePrivateState>>('OnePledgeRegistry', Registry.Contract).pipe(

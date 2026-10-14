@@ -27,7 +27,7 @@ const check = (label: string, ok: boolean, detail = '') => {
   if (!ok) failures.push(label);
 };
 
-for (const circuit of ['admitLender', 'rotateRegistrar', 'pledge', 'release']) {
+for (const circuit of ['admitLender', 'rotateRegistrar', 'pledge', 'release', 'acceptPledge', 'declinePledge']) {
   const committed = fs.readFileSync(path.join(zkConfigPath, 'keys', `${circuit}.verifier`));
   const onChain = state.operation(circuit)?.verifierKey;
   check(`verifier key: ${circuit}`, !!onChain && Buffer.from(onChain).equals(committed), `${committed.length} bytes`);

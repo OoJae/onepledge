@@ -414,6 +414,126 @@ describe('release', () => {
   });
 });
 
+describe('lender acceptance and the void path', () => {
+  const pledgedTo = (lender: 'A' | 'B' = 'A') => {
+    const w = newWorld();
+    const inv = attestInvoice(w.authority, w.borrower, invoiceNumber());
+    const lenderSecret = lender === 'A' ? w.lenderA : w.lenderB;
+    const { note, noteSalt } = pledgeAs(w, inv, lenderSecret);
+    return { w, inv, note, noteSalt, lenderSecret };
+  };
+
+  it('lets the named lender accept, publishing only a decision nullifier', () => {
+    const { w, inv, note, noteSalt } = pledgedTo();
+    w.sim.as(lenderReleaseState(w.lenderA, inv, noteSalt));
+    w.sim.acceptPledge();
+    const l = w.sim.ledger();
+    expect(l.acceptCount).toBe(1n);
+    expect(l.accepted.member(pureCircuits.decisionNullifier(note, w.lenderA))).toBe(true);
+    expect(l.accepted.member(note)).toBe(false);
+    expect(l.declined.isEmpty()).toBe(true);
+    // Accepting does not free the receivable.
+    expect(l.tags.member(inv.attestation.tag)).toBe(true);
+  });
+
+  it('frees the receivable when the named lender declines', () => {
+    const { w, inv, note, noteSalt } = pledgedTo();
+    expect(w.sim.ledger().tags.member(inv.attestation.tag)).toBe(true);
+
+    w.sim.as(lenderReleaseState(w.lenderA, inv, noteSalt));
+    w.sim.declinePledge();
+
+    const l = w.sim.ledger();
+    expect(l.declineCount).toBe(1n);
+    expect(l.declined.member(pureCircuits.decisionNullifier(note, w.lenderA))).toBe(true);
+    expect(l.tags.member(inv.attestation.tag)).toBe(false);
+  });
+
+  it('lets the borrower pledge the same invoice elsewhere after a decline', () => {
+    const { w, inv, noteSalt } = pledgedTo();
+    w.sim.as(lenderReleaseState(w.lenderA, inv, noteSalt));
+    w.sim.declinePledge();
+
+    // The whole point of the void path: a refused pledge must not burn the receivable.
+    const second = pledgeAs(w, inv, w.lenderB);
+    expect(w.sim.ledger().tags.member(inv.attestation.tag)).toBe(true);
+    expect(w.sim.ledger().pledgeCount).toBe(2n);
+    expect(second.note).not.toEqual(new Uint8Array(32));
+  });
+
+  it('still refuses a second pledge while the first is undecided', () => {
+    const { w, inv } = pledgedTo();
+    expect(() => pledgeAs(w, inv, w.lenderB)).toThrow(/Receivable already pledged/);
+  });
+
+  it('still refuses a second pledge after the lender accepted', () => {
+    const { w, inv, noteSalt } = pledgedTo();
+    w.sim.as(lenderReleaseState(w.lenderA, inv, noteSalt));
+    w.sim.acceptPledge();
+    expect(() => pledgeAs(w, inv, w.lenderB)).toThrow(/Receivable already pledged/);
+  });
+
+  it('rejects a second decision on the same pledge', () => {
+    const { w, inv, noteSalt } = pledgedTo();
+    w.sim.as(lenderReleaseState(w.lenderA, inv, noteSalt));
+    w.sim.acceptPledge();
+    expect(() => w.sim.acceptPledge()).toThrow(/Pledge already accepted/);
+    expect(() => w.sim.declinePledge()).toThrow(/Pledge already accepted/);
+  });
+
+  it('rejects an accept after a decline', () => {
+    const { w, inv, noteSalt } = pledgedTo();
+    w.sim.as(lenderReleaseState(w.lenderA, inv, noteSalt));
+    w.sim.declinePledge();
+    expect(() => w.sim.acceptPledge()).toThrow(/Pledge already declined/);
+    expect(() => w.sim.declinePledge()).toThrow(/Pledge already declined/);
+  });
+
+  it('stops another lender from deciding on the pledge', () => {
+    const { w, inv, noteSalt } = pledgedTo();
+    w.sim.as(lenderReleaseState(w.lenderB, inv, noteSalt));
+    expect(() => w.sim.acceptPledge()).toThrow(/Pledge note not found/);
+    expect(() => w.sim.declinePledge()).toThrow(/Pledge note not found/);
+  });
+
+  it('stops another lender who supplies the real note path', () => {
+    const { w, inv, note, noteSalt } = pledgedTo();
+    const sim = w.sim;
+    sim.contract.witnesses.getNotePath = ({ privateState, ledger }) => [privateState, ledger.notes.findPathForLeaf(note)!];
+    sim.as(lenderReleaseState(w.lenderB, inv, noteSalt));
+    expect(() => sim.declinePledge()).toThrow(/Note path does not match the note opening/);
+  });
+
+  it('rejects a decision with the wrong note salt', () => {
+    const { w, inv } = pledgedTo();
+    w.sim.as(lenderReleaseState(w.lenderA, inv, secret()));
+    expect(() => w.sim.acceptPledge()).toThrow(/Pledge note not found/);
+  });
+
+  it('keeps release available to the lender of record after accepting', () => {
+    const { w, inv, noteSalt } = pledgedTo();
+    w.sim.as(lenderReleaseState(w.lenderA, inv, noteSalt));
+    w.sim.acceptPledge();
+    w.sim.release();
+    expect(w.sim.ledger().releaseCount).toBe(1n);
+  });
+
+  it('gives each lender a distinct decision nullifier for the same note', () => {
+    const { note } = pledgedTo();
+    const w = newWorld();
+    expect(pureCircuits.decisionNullifier(note, w.lenderA)).not.toEqual(
+      pureCircuits.decisionNullifier(note, w.lenderB),
+    );
+  });
+
+  it('separates decision nullifiers from release nullifiers', () => {
+    const { w, note } = pledgedTo();
+    expect(pureCircuits.decisionNullifier(note, w.lenderA)).not.toEqual(
+      pureCircuits.releaseNullifier(note, w.lenderA),
+    );
+  });
+});
+
 describe('pure helpers', () => {
   it('separates role keys derived from the same secret', () => {
     const s = secret();

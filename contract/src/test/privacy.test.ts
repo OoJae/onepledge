@@ -227,6 +227,49 @@ describe('allowlist: a transcript publishes only what the design intends', () =>
     expectAbsent(toJson(w.sim.lastResult!.proofData.publicTranscript), 'registrar secret', w.registrar);
   });
 
+  it('acceptPledge publishes only the decision nullifier and the notes root', () => {
+    const w = newWorld();
+    const inv = attestInvoice(w.authority, w.borrower, invoiceNumber());
+    const { note, noteSalt } = pledgeAs(w, inv, w.lenderA);
+    const notesRoot = w.sim.ledger().notes.root().field;
+    w.sim.as(lenderReleaseState(w.lenderA, inv, noteSalt));
+    w.sim.acceptPledge();
+    const values = transcriptValues(w.sim.lastResult!.proofData.publicTranscript);
+    // Accepting must not say which receivable was accepted: the tag stays out of the transcript.
+    const extra = unexpectedValues(values, [pureCircuits.decisionNullifier(note, w.lenderA), notesRoot]);
+    expect(extra, `unexpected public values: ${extra.join(', ')}`).toEqual([]);
+  });
+
+  it('declinePledge publishes the tag it frees, and nothing else beyond the nullifier and root', () => {
+    const w = newWorld();
+    const inv = attestInvoice(w.authority, w.borrower, invoiceNumber());
+    const { note, noteSalt } = pledgeAs(w, inv, w.lenderA);
+    const notesRoot = w.sim.ledger().notes.root().field;
+    w.sim.as(lenderReleaseState(w.lenderA, inv, noteSalt));
+    w.sim.declinePledge();
+    const values = transcriptValues(w.sim.lastResult!.proofData.publicTranscript);
+    // The tag is deliberate here and only here: the ledger has to stop claiming the receivable is
+    // encumbered, and it was already public from the pledge.
+    const extra = unexpectedValues(values, [
+      pureCircuits.decisionNullifier(note, w.lenderA),
+      notesRoot,
+      inv.attestation.tag,
+    ]);
+    expect(extra, `unexpected public values: ${extra.join(', ')}`).toEqual([]);
+  });
+
+  it('a decision does not reveal the note, the lender or the invoice', () => {
+    const { w, inv, note, noteSalt } = pledgeOne();
+    w.sim.as(lenderReleaseState(w.lenderA, inv, noteSalt));
+    w.sim.acceptPledge();
+    const proof = toJson(w.sim.lastResult!.proofData.publicTranscript);
+    expectAbsent(proof, 'accepted note', note);
+    expectAbsent(proof, 'accepted tag', inv.attestation.tag);
+    expectAbsent(proof, 'lender key', pureCircuits.lenderKey(w.lenderA));
+    expectAbsent(proof, 'lender secret', w.lenderA);
+    expectAbsent(proof, 'invoice commitment', inv.attestation.invoiceCommit);
+  });
+
   it('positive control: the allowlist flags an injected 32-byte private value in either byte order', () => {
     const w = newWorld();
     const inv = attestInvoice(w.authority, w.borrower, invoiceNumber());

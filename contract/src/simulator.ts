@@ -102,5 +102,13 @@ export class RegistrySimulator {
     this.run((ctx) => this.contract.impureCircuits.release(ctx));
   }
 
+  acceptPledge(): void {
+    this.run((ctx) => this.contract.impureCircuits.acceptPledge(ctx));
+  }
+
+  declinePledge(): void {
+    this.run((ctx) => this.contract.impureCircuits.declinePledge(ctx));
+  }
+
   static readonly pure = pureCircuits;
 }
