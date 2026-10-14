@@ -29,6 +29,7 @@ const dust = (n: bigint) => (Number(n) / 1e6).toLocaleString(undefined, { maximu
 export default function Desk() {
   const [choices, setChoices] = useState<WalletChoice[] | null>(null);
   const [busy, setBusy] = useState(false);
+  const [scanning, setScanning] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [wallet, setWallet] = useState<Wallet | null>(null);
   const connection = useRef<Connection | null>(null);
@@ -41,6 +42,14 @@ export default function Desk() {
     return () => {
       live = false;
     };
+  }, []);
+
+  // Extensions inject late, and a fresh install usually lands after this page has already given up.
+  // Without this the page would claim there is no wallet until a reload.
+  const rescan = useCallback(async () => {
+    setScanning(true);
+    setChoices(await waitForWallets());
+    setScanning(false);
   }, []);
 
   const onConnect = useCallback(async (choice: WalletChoice) => {
@@ -99,6 +108,14 @@ export default function Desk() {
             <a href="/demo">walkthrough</a> and the <a href="/live">live registry</a> work without one.
           </span>
         </p>
+      )}
+
+      {choices !== null && choices.length === 0 && (
+        <section className="actions">
+          <button className="ghost" onClick={() => void rescan()} aria-busy={scanning} aria-disabled={scanning}>
+            {scanning ? 'Looking…' : 'Look again'}
+          </button>
+        </section>
       )}
 
       {choices !== null && choices.length > 0 && wallet === null && (
