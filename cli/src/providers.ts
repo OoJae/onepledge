@@ -7,28 +7,24 @@ import path from 'node:path';
 import { randomBytes } from 'node:crypto';
 import * as Rx from 'rxjs';
 import * as ledger from '@midnight-ntwrk/midnight-js-protocol/ledger';
-import { CompiledContract } from '@midnight-ntwrk/midnight-js-protocol/compact-js';
 import { httpClientProofProvider } from '@midnight-ntwrk/midnight-js-http-client-proof-provider';
 import { indexerPublicDataProvider } from '@midnight-ntwrk/midnight-js-indexer-public-data-provider';
 import { levelPrivateStateProvider } from '@midnight-ntwrk/midnight-js-level-private-state-provider';
 import { NodeZkConfigProvider } from '@midnight-ntwrk/midnight-js-node-zk-config-provider';
 import type { MidnightProvider, MidnightProviders, UnboundTransaction, WalletProvider } from '@midnight-ntwrk/midnight-js-types';
-import { Registry, type OnePledgePrivateState, witnesses } from '@onepledge/contract';
+import { makeRegistryContract, type OnePledgePrivateState, type RegistryCircuits } from '@onepledge/contract';
 import { publicKeyOf, randomScalar } from '@onepledge/attester';
 import { type NetworkConfig, repoRoot, secretsDir } from './config.js';
 import { type WalletContext, unshieldedAddress } from './wallet.js';
 
-export type RegistryCircuits = 'admitLender' | 'rotateRegistrar' | 'pledge' | 'release';
+export type { RegistryCircuits };
 export type PartyId = 'registrar' | 'borrower' | 'lenderA' | 'lenderB';
 export type RegistryProviders = MidnightProviders<RegistryCircuits, PartyId, OnePledgePrivateState>;
 
 export const zkConfigPath = path.join(repoRoot, 'contract', 'src', 'managed', 'registry');
 export const deploymentsDir = path.join(repoRoot, 'deployments');
 
-export const registryContract = CompiledContract.make<Registry.Contract<OnePledgePrivateState>>(
-  'OnePledgeRegistry',
-  Registry.Contract,
-).pipe(CompiledContract.withWitnesses(witnesses as never), CompiledContract.withCompiledFileAssets(zkConfigPath));
+export const registryContract = makeRegistryContract(zkConfigPath);
 
 const readOrCreate = <T>(file: string, create: () => T): T => {
   const full = path.join(secretsDir, file);

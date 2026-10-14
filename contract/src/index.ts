@@ -2,3 +2,4 @@
 export * as Registry from './managed/registry/contract/index.js';
 export * from './witnesses.js';
 export * from './simulator.js';
+export * from './compiled.js';
