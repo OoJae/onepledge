@@ -18,3 +18,8 @@ deployments/undeployed.json
 cli/midnight-level-db/
 docs/video/voice/
 docs/video/build/
+
+# Circuit artifacts staged into the web app by `npm run zk:assets`; the originals
+# are tracked under contract/src/managed/registry.
+web/public/keys/
+web/public/zkir/
