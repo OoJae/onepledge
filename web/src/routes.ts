@@ -35,6 +35,14 @@ export const ROUTES: RouteDef[] = [
     page: lazyPage(() => import('./pages/Live.tsx').then((m) => m.Live as ComponentType)),
   },
   {
+    path: '/desk',
+    label: 'Desk',
+    title: 'OnePledge · pledge from your own wallet',
+    fallback: 'Loading the wallet connector…',
+    nav: true,
+    page: lazyPage(() => import('./pages/Desk.tsx').then((m) => m.default as ComponentType)),
+  },
+  {
     path: '/brand',
     label: 'Brand',
     title: 'OnePledge · brand',
