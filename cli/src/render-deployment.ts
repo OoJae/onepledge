@@ -8,8 +8,8 @@ import path from 'node:path';
 import { repoRoot } from './config.js';
 
 const EXPLORER = 'https://preprod.midnightexplorer.com';
-const START = '<!-- v2-deployment:start -->';
-const END = '<!-- v2-deployment:end -->';
+const START = '<!-- deployment:start -->';
+const END = '<!-- deployment:end -->';
 
 type Event = {
   label: string;
@@ -38,7 +38,7 @@ const secs = (n?: number) => (n === undefined ? '' : `${n} s`);
 const row = (e: Event) =>
   e.txHash
     ? `| ${e.label} | \`${e.circuit}\` | ${txLink(e.txHash)} | ${e.blockHeight} | ${secs(e.proveSeconds)} | ${secs(e.totalSeconds)} |`
-    : `| ${e.label} | \`${e.circuit}\` | none: ${e.outcome}, so no proof or transaction could be built | | | |`;
+    : `| ${e.label} | \`${e.circuit}\` | none: ${e.outcome} | | | |`;
 
 const { committeeSize, threshold } = record.maintenanceAuthority;
 const authority =

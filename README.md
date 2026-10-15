@@ -27,7 +27,7 @@ Built for the Midnight Buildathon (AKINDO WaveHack), Wave 1.
 
 ## Live on Midnight Preprod
 
-<!-- v2-deployment:start -->
+<!-- deployment:start -->
 **Registry v3** · contract [`488f67156c541957614bcd7be7e88593d5fc68bb1188fe18893c0485f0ba4900`](https://preprod.midnightexplorer.com/contracts/488f67156c541957614bcd7be7e88593d5fc68bb1188fe18893c0485f0ba4900) · deployed 2026-10-15 in block 2991455 · upgrade key: 1-of-1 deployer key
 
 | Step | Circuit | Transaction | Block | Proved in | Finalized after |
@@ -36,7 +36,7 @@ Built for the Midnight Buildathon (AKINDO WaveHack), Wave 1.
 | Registrar admits lender A | `admitLender` | [`c7f2edb94fb5…`](https://preprod.midnightexplorer.com/transactions/c7f2edb94fb5e6d04e796490913363026773483212c717315470528f0b8401ae) | 2991568 | 0.6 s | 28.4 s |
 | Registrar admits lender B | `admitLender` | [`dac7e2d3ab3c…`](https://preprod.midnightexplorer.com/transactions/dac7e2d3ab3c530fdec6015aeb0a6c660b75a9f2ba7f2adad184b0dea4902083) | 2991573 | 0.7 s | 29 s |
 | Borrower pledges invoice 1 to lender A | `pledge` | [`d7012e0af2de…`](https://preprod.midnightexplorer.com/transactions/d7012e0af2de4282b4b8d6e330cdb41ffbaa80ba83a4789d1345833b8a7bda26) | 2991579 | 2.7 s | 35.9 s |
-| Borrower re-pledges invoice 1 to lender B | `pledge` | none: rejected before proving: Receivable already pledged, so no proof or transaction could be built | | | |
+| Borrower re-pledges invoice 1 to lender B | `pledge` | none: rejected before proving: Receivable already pledged | | | |
 | Lender A accepts invoice 1 | `acceptPledge` | [`55d65d52366e…`](https://preprod.midnightexplorer.com/transactions/55d65d52366ec66f11810f6c4c84911a547120df3dbc7d2ec5d685e711943fdf) | 2991584 | 2.2 s | 28.2 s |
 | Borrower pledges invoice 2 to lender B | `pledge` | [`376c53a7a468…`](https://preprod.midnightexplorer.com/transactions/376c53a7a4680f975ef612cae34f501b5895de5a40547fb27452b44af46d6be5) | 2991589 | 1.8 s | 28.5 s |
 | Lender B declines invoice 2, freeing the receivable | `declinePledge` | [`a7b3ecff91b0…`](https://preprod.midnightexplorer.com/transactions/a7b3ecff91b05aef406beb014de80edf7ded0a1783b08e67094a487ecfec5175) | 2991595 | 1.9 s | 33.7 s |
@@ -44,7 +44,7 @@ Built for the Midnight Buildathon (AKINDO WaveHack), Wave 1.
 | Lender A releases invoice 1 | `release` | [`7917e51555f9…`](https://preprod.midnightexplorer.com/transactions/7917e51555f917913427dcc4b6b8caeb011bc62b15acdc45ce89c3117a43f5f7) | 2991605 | 2.2 s | 28.7 s |
 
 Step labels come from the operator's run log (`npm run demo`), not from the chain: on chain these are plain circuit calls that do not say which lender or invoice they concern. Proving ran on a local proof server (Docker, Apple silicon laptop); "finalized after" is from starting the call to the indexer reporting it.
-<!-- v2-deployment:end -->
+<!-- deployment:end -->
 
 **Registry v1 is deprecated.** The Wave 1 security review found that v1 signed only 248 of the tag's 256 bits, so one attestation could be pledged again with a different last byte. v2 fixes it and adds deployment binding and expiry; see [docs/security-review.md](docs/security-review.md). The v1 record is kept in [`deployments/archive/`](deployments/archive/). v1 is still callable on Preprod (contracts cannot be deleted, and its verifier keys were not removed) and shares v2's tag authority and acceptance window; the tag authority now signs only v2 attestations, which name the v2 address. Do not use v1.
 
