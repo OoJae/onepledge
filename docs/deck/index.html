@@ -2,17 +2,24 @@
 <html lang="en">
 <head>
 <meta charset="utf-8" />
-<title>OnePledge · Wave 1</title>
+<title>OnePledge · Wave 2</title>
+<link rel="preconnect" href="https://fonts.googleapis.com" />
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+<link href="https://fonts.googleapis.com/css2?family=Fraunces:ital,opsz,wght@0,9..144,500;0,9..144,600;1,9..144,500&family=Inter:wght@400;600;700&family=JetBrains+Mono:wght@400;500&display=swap" rel="stylesheet" />
 <style>
   @page { size: 1600px 900px; margin: 0; }
+  /* Notary at midnight: the same tokens the site ships (web/src/brand/tokens.ts). Wax is the only
+     accent and it is reserved for the moment a pledge is made or refused. */
   :root {
-    --paper: #f6f4ef; --card: #fffdf8; --ink: #15171a; --soft: #4b4f57; --muted: #5f646c;
-    --rule: #e2ded4; --accent: #1f5e46; --accent-soft: #e3efe8; --danger: #a3302a; --danger-soft: #f6e4e1;
-    --mono: ui-monospace, 'SF Mono', Menlo, Consolas, monospace;
+    --paper: #0B0D12; --card: #12151C; --ink: #EDE6D6; --soft: #A9A396; --muted: #8a857a;
+    --rule: #2A2F3A; --accent: #F0664A; --accent-soft: #1d1a1c; --danger: #E0452B; --danger-soft: #231619;
+    --mono: 'JetBrains Mono', ui-monospace, 'SF Mono', Menlo, Consolas, monospace;
     --sans: 'Inter', ui-sans-serif, system-ui, -apple-system, 'Segoe UI', sans-serif;
+    --display: 'Fraunces', Georgia, 'Times New Roman', serif;
+    color-scheme: dark;
   }
   * { box-sizing: border-box; }
-  html, body { margin: 0; background: #d9d5cc; font-family: var(--sans); color: var(--ink); -webkit-font-smoothing: antialiased; }
+  html, body { margin: 0; background: #06070a; font-family: var(--sans); color: var(--ink); -webkit-font-smoothing: antialiased; }
   .slide {
     width: 1600px; height: 900px; background: var(--paper); position: relative; overflow: hidden;
     padding: 84px 104px; margin: 0 auto 24px; page-break-after: always; break-after: page;
@@ -20,15 +27,15 @@
   }
   @media print { html, body { background: var(--paper); } .slide { margin: 0; } }
   .kicker { color: var(--accent); font-weight: 700; font-size: 22px; letter-spacing: .02em; margin: 0 0 20px; }
-  h1 { font-size: 88px; line-height: 1.02; letter-spacing: -.03em; margin: 0 0 28px; }
-  h2 { font-size: 60px; line-height: 1.06; letter-spacing: -.025em; margin: 0 0 36px; max-width: 1250px; }
-  h3 { font-size: 28px; margin: 0 0 10px; letter-spacing: -.01em; }
+  h1 { font-family: var(--display); font-weight: 600; font-size: 88px; line-height: 1.02; letter-spacing: -.03em; margin: 0 0 28px; }
+  h2 { font-family: var(--display); font-weight: 600; font-size: 60px; line-height: 1.06; letter-spacing: -.025em; margin: 0 0 36px; max-width: 1250px; }
+  h3 { font-family: var(--display); font-weight: 600; font-size: 28px; margin: 0 0 10px; letter-spacing: -.01em; }
   p, li { font-size: 26px; line-height: 1.45; color: var(--soft); }
   .lede { font-size: 32px; max-width: 1150px; margin: 0; }
   .mono { font-family: var(--mono); }
   .footer { position: absolute; left: 104px; right: 104px; bottom: 40px; display: flex; justify-content: space-between; color: var(--muted); font-size: 18px; }
-  .brand { display: inline-flex; align-items: center; gap: 14px; font-weight: 700; font-size: 30px; color: var(--ink); }
-  .mark { width: 44px; height: 44px; border-radius: 9px; background: var(--ink); color: var(--paper); display: grid; place-items: center; font-family: var(--mono); font-size: 24px; }
+  .brand { font-family: var(--display); display: inline-flex; align-items: center; gap: 14px; font-weight: 700; font-size: 30px; color: var(--ink); }
+  .mark { width: 44px; height: 44px; border-radius: 999px; background: var(--danger); color: var(--paper); display: grid; place-items: center; font-family: var(--mono); font-size: 24px; }
   .grid2 { display: grid; grid-template-columns: 1fr 1fr; gap: 28px; }
   .grid3 { display: grid; grid-template-columns: repeat(3, 1fr); gap: 24px; }
   .card { background: var(--card); border: 1px solid var(--rule); border-radius: 16px; padding: 32px; }
