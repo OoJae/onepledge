@@ -1,0 +1,117 @@
+{
+  "network": "preprod",
+  "version": "v3",
+  "status": "deprecated: superseded by registry v4 (2-of-3 registrar committee, borrowing-base proof)",
+  "maintenanceAuthority": {
+    "committeeSize": 1,
+    "threshold": 1,
+    "note": "Deployer-held upgrade key: can insert or remove verifier keys. Planned: 2-of-3 committee, then frozen."
+  },
+  "contractAddress": "488f67156c541957614bcd7be7e88593d5fc68bb1188fe18893c0485f0ba4900",
+  "deployTxId": "00e66927f15441a6822fbb1f36dd13b355ec43b8918cff05695401938cecb5b94f",
+  "deployTxHash": "b48711e29351677ef858376009d6ffba5d0651239462b4b2e34beac244d916bd",
+  "deployBlockHeight": 2991455,
+  "deployedAt": "2026-10-15T12:16:29.435Z",
+  "tagAuthority": {
+    "x": "48817866768362115749717640132431737144656854862769456630695825445246438828101",
+    "y": "26210506021675530152345939211530494862711628490685782702923573844959068851475"
+  },
+  "windowStart": 20635,
+  "windowEnd": 20819,
+  "events": [
+    {
+      "label": "Registrar admits lender A",
+      "circuit": "admitLender",
+      "txId": "00115a9cbdfd736c66fadacd9ca4cba446e50fa3fe130a3d64bd2aff905b150b5c",
+      "txHash": "c7f2edb94fb5e6d04e796490913363026773483212c717315470528f0b8401ae",
+      "blockHeight": 2991568,
+      "outcome": "accepted",
+      "at": "2026-10-15T12:27:43.688Z",
+      "proveSeconds": 0.6,
+      "totalSeconds": 28.4
+    },
+    {
+      "label": "Registrar admits lender B",
+      "circuit": "admitLender",
+      "txId": "0034f410c221b913e07595d28b0177e6e7f8878850fce9c8f64fde431116f3d4b6",
+      "txHash": "dac7e2d3ab3c530fdec6015aeb0a6c660b75a9f2ba7f2adad184b0dea4902083",
+      "blockHeight": 2991573,
+      "outcome": "accepted",
+      "at": "2026-10-15T12:28:13.061Z",
+      "proveSeconds": 0.7,
+      "totalSeconds": 29
+    },
+    {
+      "label": "Borrower pledges invoice 1 to lender A",
+      "circuit": "pledge",
+      "txId": "0084b751eb835a268b7e6afc633585188e3d54a3feb3b7ce6e4713f0cae73758ec",
+      "txHash": "d7012e0af2de4282b4b8d6e330cdb41ffbaa80ba83a4789d1345833b8a7bda26",
+      "blockHeight": 2991579,
+      "outcome": "accepted",
+      "at": "2026-10-15T12:28:50.361Z",
+      "proveSeconds": 2.7,
+      "totalSeconds": 35.9
+    },
+    {
+      "label": "Borrower re-pledges invoice 1 to lender B",
+      "circuit": "pledge",
+      "outcome": "rejected before proving: Receivable already pledged",
+      "at": "2026-10-15T12:28:51.017Z"
+    },
+    {
+      "label": "Lender A accepts invoice 1",
+      "circuit": "acceptPledge",
+      "txId": "001f7136e01a6b6c1ab81901ea79750a47a87492dc1f14298fb16ce59d4cd79897",
+      "txHash": "55d65d52366ec66f11810f6c4c84911a547120df3dbc7d2ec5d685e711943fdf",
+      "blockHeight": 2991584,
+      "outcome": "accepted",
+      "at": "2026-10-15T12:29:21.199Z",
+      "proveSeconds": 2.2,
+      "totalSeconds": 28.2
+    },
+    {
+      "label": "Borrower pledges invoice 2 to lender B",
+      "circuit": "pledge",
+      "txId": "00be8070decace8ac4144ecc30be623def19093bb163c28eb18bc900d9d998dd1f",
+      "txHash": "376c53a7a4680f975ef612cae34f501b5895de5a40547fb27452b44af46d6be5",
+      "blockHeight": 2991589,
+      "outcome": "accepted",
+      "at": "2026-10-15T12:29:50.128Z",
+      "proveSeconds": 1.8,
+      "totalSeconds": 28.5
+    },
+    {
+      "label": "Lender B declines invoice 2, freeing the receivable",
+      "circuit": "declinePledge",
+      "txId": "003c3bce944c4c46d04c2078feaa3d4715c35f73a377d2ef3d8d609cb7e19d3e88",
+      "txHash": "a7b3ecff91b05aef406beb014de80edf7ded0a1783b08e67094a487ecfec5175",
+      "blockHeight": 2991595,
+      "outcome": "accepted",
+      "at": "2026-10-15T12:30:25.737Z",
+      "proveSeconds": 1.9,
+      "totalSeconds": 33.7
+    },
+    {
+      "label": "Borrower pledges the freed invoice 2 to lender A",
+      "circuit": "pledge",
+      "txId": "00914195d9e7c134a1ac073e624b552245b75ddbfb5d19cf2c3dec8e945b9830e8",
+      "txHash": "edb90b824280d0654d5544a131f147a43459178bf0985b4bc9bed4fbc961c30d",
+      "blockHeight": 2991600,
+      "outcome": "accepted",
+      "at": "2026-10-15T12:30:57.287Z",
+      "proveSeconds": 1.8,
+      "totalSeconds": 31.1
+    },
+    {
+      "label": "Lender A releases invoice 1",
+      "circuit": "release",
+      "txId": "00919aa9a9a15a488da3a7124f2c9f5ba7844fa08af748cce1dca0335e9d4fa858",
+      "txHash": "7917e51555f917913427dcc4b6b8caeb011bc62b15acdc45ce89c3117a43f5f7",
+      "blockHeight": 2991605,
+      "outcome": "accepted",
+      "at": "2026-10-15T12:31:26.645Z",
+      "proveSeconds": 2.2,
+      "totalSeconds": 28.7
+    }
+  ]
+}

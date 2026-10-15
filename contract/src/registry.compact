@@ -477,15 +477,23 @@ export circuit declinePledge(): [] {
 // The pool is fixed at four because a depth-16 path plus a note recompute costs about 4.8 MB of
 // prover key per receivable. Larger books accumulate instead: run a draw per round over a rolling
 // four, or raise N and pay for it. Documented in the README rather than hidden behind a constant.
+//
+// What this still cannot prove, and the reason is the same each time: `accepted`, `declined` and
+// `releases` are Sets, and a Compact circuit can only ask a Set about a key it discloses. So a draw
+// cannot require that its four receivables were accepted, nor that they were not later declined or
+// released, without publishing the decision nullifier and tying the draw back to the accepts behind
+// it — which would group a lender's book, the one thing this contract exists to prevent. A lender
+// can therefore include a receivable it declined or has already been paid for. Stated in the threat
+// model as a limitation, not worked around.
 
-// Checks one pool item and returns its note commitment and amount, both undisclosed: the caller
-// needs the commitments only to prove the four are distinct, and the amount only to add it up.
+// Checks one pool item and returns its tag and amount, both undisclosed: the caller needs the tags
+// only to prove the four receivables are different ones, and the amount only to add it up.
 circuit checkPoolItem(lender: Bytes<32>, item: PoolItem,
                       path: MerkleTreePath<16, Bytes<32>>): [Bytes<32>, Uint<64>] {
   const note = noteCommitment(item.tag, lender, item.invoiceCommit, item.amount, item.salt);
   assert(path.leaf == note, "Pool note path does not match its opening");
   assert(notes.checkRoot(disclose(merkleTreePathRoot<16, Bytes<32>>(path))), "Unknown pool note");
-  return [note, item.amount];
+  return [item.tag, item.amount];
 }
 
 export circuit proveBorrowingBase(round: Bytes<32>, floor: Uint<128>): [] {
@@ -494,16 +502,24 @@ export circuit proveBorrowingBase(round: Bytes<32>, floor: Uint<128>): [] {
   const pool = getPool();
   const paths = getPoolPaths();
 
-  const [note0, amount0] = checkPoolItem(lender, pool[0], paths[0]);
-  const [note1, amount1] = checkPoolItem(lender, pool[1], paths[1]);
-  const [note2, amount2] = checkPoolItem(lender, pool[2], paths[2]);
-  const [note3, amount3] = checkPoolItem(lender, pool[3], paths[3]);
+  const [tag0, amount0] = checkPoolItem(lender, pool[0], paths[0]);
+  const [tag1, amount1] = checkPoolItem(lender, pool[1], paths[1]);
+  const [tag2, amount2] = checkPoolItem(lender, pool[2], paths[2]);
+  const [tag3, amount3] = checkPoolItem(lender, pool[3], paths[3]);
 
-  // Four distinct receivables, not one counted four times. Comparing commitments does this without
-  // publishing anything; a nullifier per item would have worked too, and would have published four
-  // more values for an observer to correlate.
-  assert(note0 != note1 && note0 != note2 && note0 != note3, "A receivable appears twice in the pool");
-  assert(note1 != note2 && note1 != note3 && note2 != note3, "A receivable appears twice in the pool");
+  // Four distinct *receivables*, which means four distinct tags — not four distinct notes.
+  //
+  // Comparing note commitments was the first version of this check and it was unsound. Declining a
+  // pledge frees the tag but leaves the note in the append-only tree, and the declining lender keeps
+  // its opening, so one invoice pledged, declined and pledged again to the same lender yields two
+  // different commitments for one receivable. A lender could pad its book by repeating that: a test
+  // proved a floor of 20,000,000 grosz against a book genuinely worth 11,000,000. The tag identifies
+  // the receivable, so the tag is what has to be unique.
+  //
+  // Both forms cost the same and neither discloses anything — the tags are private witnesses and
+  // only their inequality is proven.
+  assert(tag0 != tag1 && tag0 != tag2 && tag0 != tag3, "A receivable appears twice in the pool");
+  assert(tag1 != tag2 && tag1 != tag3 && tag2 != tag3, "A receivable appears twice in the pool");
 
   // Arithmetic widens rather than wrapping, so the sum cannot overflow into a passing total.
   const total = amount0 + amount1 + amount2 + amount3;

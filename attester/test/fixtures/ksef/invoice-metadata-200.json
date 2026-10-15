@@ -1,0 +1,49 @@
+{
+  "provenance": {
+    "recorded": false,
+    "label": "HAND-AUTHORED. NOT A RECORDING.",
+    "note": "Written by hand from the published KSeF OpenAPI contract. No request was ever sent to api-test.ksef.mf.gov.pl, or to any other host, to produce this file. The field names and types come from the contract; every value is invented.",
+    "schema": "QueryInvoicesMetadataResponse (invoices[] are InvoiceMetadata)",
+    "endpoint": "POST /invoices/query/metadata",
+    "contract": "https://github.com/CIRFMF/ksef-docs/blob/main/open-api.json",
+    "apiVersion": "2.9.0 (build 2.9.0-te)",
+    "authoredOn": "2026-10-15",
+    "invented": [
+      "ksefNumber: the worked example from the ministry's numer-ksef.md, whose CRC-8 and NIP check digit both hold",
+      "acquisitionDate: deliberately on the same UTC day (2025-08-26) as the date embedded in that number, which is what the cross-check in ksef-client.ts verifies",
+      "invoiceHash: base64 SHA-256 of an ASCII marker string, not of any invoice XML",
+      "formCode: the FA(3) triple as the ministry's schema documentation spells it; unverified against a live response",
+      "amounts, names, invoiceNumber: invented, and the NIPs are the two that appear in this repo's existing KSeF tests"
+    ]
+  },
+  "status": 200,
+  "contentType": "application/json",
+  "body": {
+    "hasMore": false,
+    "isTruncated": false,
+    "permanentStorageHwmDate": null,
+    "invoices": [
+      {
+        "ksefNumber": "5265877635-20250826-0100001AF629-AF",
+        "invoiceNumber": "FV/2025/08/0041",
+        "issueDate": "2025-08-25",
+        "invoicingDate": "2025-08-26T12:41:06.904Z",
+        "acquisitionDate": "2025-08-26T12:41:07.113Z",
+        "permanentStorageDate": "2025-08-26T12:52:19.004Z",
+        "seller": { "nip": "5265877635", "name": "Przykladowy Sprzedawca sp. z o.o." },
+        "buyer": { "identifier": "7010002139", "name": "Przykladowy Nabywca S.A." },
+        "netAmount": 125000.0,
+        "grossAmount": 153750.0,
+        "vatAmount": 28750.0,
+        "currency": "PLN",
+        "invoicingMode": "Online",
+        "invoiceType": "Vat",
+        "formCode": { "systemCode": "FA (3)", "schemaVersion": "1-0E", "value": "FA" },
+        "isSelfInvoicing": false,
+        "hasAttachment": false,
+        "invoiceHash": "P9O/gsLGQBSXJ5JNy9qiF21P1tyfQWHZtJBJb6JkH4g=",
+        "hashOfCorrectedInvoice": null
+      }
+    ]
+  }
+}

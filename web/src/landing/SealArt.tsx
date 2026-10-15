@@ -4,7 +4,7 @@
 import { memo } from 'react';
 import { rosette, ring } from '../brand/guilloche.ts';
 import { NUMERAL_ONE } from '../brand/mark.ts';
-import { DEMO_KSEF, V2_TAGS } from '../brand/facts.ts';
+import { DEMO_KSEF, DEMO_TAGS } from '../brand/facts.ts';
 
 export type Beat = 0 | 1 | 2 | 3;
 
@@ -106,7 +106,7 @@ export const SealArt = memo(function SealArt({ beat, className = '' }: { beat: B
                 <rect width="74" height="46" rx="4" fill={filled ? '#1A1E27' : 'none'} stroke={i === 3 ? '#E0452B' : '#2A2F3A'} strokeWidth={i === 3 ? 2 : 1.2} />
                 {filled && (
                   <text x="37" y="28" textAnchor="middle" fontSize="10" fill="#EDE6D6">
-                    {V2_TAGS[i === 1 ? 0 : 1].slice(0, 7)}…
+                    {DEMO_TAGS[i === 1 ? 0 : 1].slice(0, 7)}…
                   </text>
                 )}
               </g>

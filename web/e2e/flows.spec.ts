@@ -83,7 +83,14 @@ test('landing: thesis, calls to action and real Preprod proof', async ({ page })
   await page.goto('/');
   await expect(page.getByRole('heading', { level: 1 })).toHaveText(/One invoice\.\s*One pledge\./);
   await expect(page.getByRole('link', { name: 'Try the pledge' }).first()).toHaveAttribute('href', '/demo');
-  await expect(page.getByText('refused before proving')).toBeVisible();
+  // One badge per recorded step that the circuit refused before a proof could be built. Counted from
+  // the deployment record rather than pinned, because the scenario gains refusals as the contract
+  // gains checks: this went from one to three when the registrar committee and the borrowing base
+  // landed, and a fixed number would just break again next time.
+  const refused = deployment.events.filter((e) => !('txHash' in e) || !e.txHash).length;
+  expect(refused, 'the recorded scenario has no refusals to show').toBeGreaterThan(0);
+  await expect(page.getByText('refused before proving')).toHaveCount(refused);
+  await expect(page.getByText('refused before proving').first()).toBeVisible();
   // Read the hash from the deployment record rather than pinning one: the landing page renders
   // whatever is deployed, so a hardcoded hash silently goes stale at the next redeploy.
   await expect(page.locator(`a[href*="/transactions/${deployment.deployTxHash.slice(0, 8)}"]`)).toBeVisible();

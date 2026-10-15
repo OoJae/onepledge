@@ -10,10 +10,15 @@
     "typecheck": "tsc -p tsconfig.json --noEmit",
     "deploy": "npx -y node@22 --import tsx src/deploy.ts",
     "demo": "npx -y node@22 --import tsx src/demo.ts",
+    "prove:smoke": "npx -y node@22 --import tsx src/prove-smoke.ts",
     "_note": "CLI runs on Node 22: Node 23+ ships a native WebSocket that drops Preprod RPC submissions.",
     "verify:onchain": "node --import tsx src/verify-onchain.ts",
+    "_note:committee": "The level private-state store is ./midnight-level-db relative to the CWD, so the CWD differs on purpose. rehearse:committee runs from ../logs: it creates its own throwaway store and must not contend for the lock on cli/midnight-level-db that a Preprod run may hold. install:committee runs from cli/ because that is where `npm run deploy` wrote the deployer's contract-maintenance signing key; from ../logs it would open an empty store and refuse with 'no signing key for <address>'. Stop any other process using cli/midnight-level-db before running it, and never delete a LOCK file.",
+    "rehearse:committee": "mkdir -p ../logs && cd ../logs && ONEPLEDGE_NETWORK=undeployed npx -y node@22 --import tsx ../cli/src/rehearse-committee.ts",
+    "install:committee": "npx -y node@22 --import tsx src/install-committee.ts",
     "render:deployment": "node --import tsx src/render-deployment.ts",
-    "mint:attestations": "node --import tsx src/mint-demo-attestations.ts"
+    "mint:attestations": "node --import tsx src/mint-demo-attestations.ts",
+    "replace:vk": "npx -y node@22 --import tsx src/replace-vk.ts"
   },
   "dependencies": {
     "@onepledge/contract": "*",

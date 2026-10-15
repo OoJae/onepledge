@@ -7,6 +7,12 @@ on:
     branches: [main]
   pull_request:
     branches: [main]
+  # These two exist for the `devnet` job, which is gated on them: a deploy-and-run against a real
+  # node and indexer takes 8-15 minutes, too slow to make a pull request wait. The other jobs run on
+  # every trigger, so a nightly also re-checks the build on an untouched runner.
+  workflow_dispatch:
+  schedule:
+    - cron: '17 3 * * *'
 
 jobs:
   compile-and-test:
@@ -81,3 +87,121 @@ jobs:
             web/playwright-report/
             web/test-results/
           retention-days: 7
+
+  # Everything in compile-and-test runs the circuits in the simulator, which never asks a prover for
+  # anything, so a change that keeps every assert passing and still breaks proving used to go green.
+  # This job generates one genuine proof for `pledge` — see cli/src/prove-smoke.ts for what that does
+  # and does not establish.
+  #
+  # No Compact compiler and no chain here, because contract/src/managed/registry/keys is committed
+  # (93 MiB over nine circuits: pledge.prover is 10.5 MiB and proveBorrowingBase.prover, the largest,
+  # 18.6 MiB), so the checkout already carries the keys and nothing has to be compiled or cached.
+  # Proving against the committed keys rather than freshly compiled ones is the point: these are the
+  # keys the CLI and the web app ship, and a committed key that has drifted from its zkIR is exactly
+  # the failure a fresh compile would hide. The costs: ~93 MiB more to check out than a source-only
+  # job, one 10.5 MiB /prove request body per proof — the prover key travels with the request and the
+  # proof server holds none, while /check carries only the 1.6 KiB zkIR — and a 142 MB image pull. The
+  # proof itself took 1.6-3.1s against a warm proof server on an Apple silicon laptop; a runner will
+  # be slower.
+  prove:
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    permissions:
+      contents: read
+    steps:
+      - name: Checkout
+        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+
+      - name: Setup Node.js
+        uses: actions/setup-node@820762786026740c76f36085b0efc47a31fe5020 # v7.0.0
+        with:
+          node-version: '22'
+          cache: 'npm'
+
+      - name: Install dependencies
+        run: npm ci
+
+      # `docker run`, not a `services:` container: `services` has no way to pass the
+      # `midnight-proof-server -v` command this image needs. The compose service in
+      # local-devnet/standalone.yml is not reused either — its health check is
+      # `echo > /dev/tcp/127.0.0.1/6300`, a bash builtin that is not there in the image's shell.
+      # The command below is the README's, unchanged. prove-smoke.ts polls /health itself, so no
+      # step here has to wait for the container.
+      - name: Start the proof server
+        run: docker run -d -p 6300:6300 midnightntwrk/proof-server:8.1.0 midnight-proof-server -v
+
+      - name: Generate a zero-knowledge proof
+        run: npm run prove:smoke --workspace cli
+
+      # `xargs -r` so this says nothing instead of failing when the container never started, which is
+      # itself a failure mode worth not burying under a docker usage error.
+      - name: Proof server logs on failure
+        if: failure()
+        run: docker ps -aq --filter ancestor=midnightntwrk/proof-server:8.1.0 | head -1 | xargs -r docker logs
+
+  # The whole path, once a night and on demand: deploy the registry to a local devnet and run the
+  # nine-circuit scenario against it, so every proof is checked by a real node and every transaction
+  # finalized by a real indexer. The `prove` job is the pull-request-sized slice of this one — it
+  # shows a proof can be generated, not that a ledger accepts it.
+  #
+  # Deliberately not `needs: compile-and-test`: on a manual run, sitting through the compile and the
+  # browser tests before finding out whether the chain path still works wastes the operator's time,
+  # and a devnet failure is a signal in its own right.
+  devnet:
+    if: github.event_name == 'workflow_dispatch' || github.event_name == 'schedule'
+    runs-on: ubuntu-latest
+    timeout-minutes: 45
+    permissions:
+      contents: read
+    steps:
+      - name: Checkout
+        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+
+      - name: Setup Node.js
+        uses: actions/setup-node@820762786026740c76f36085b0efc47a31fe5020 # v7.0.0
+        with:
+          node-version: '22'
+          cache: 'npm'
+
+      - name: Install dependencies
+        run: npm ci
+
+      - name: Start the proof server
+        run: docker run -d -p 6300:6300 midnightntwrk/proof-server:8.1.0 midnight-proof-server -v
+
+      # `--wait` gates on the node's and the indexer's own health checks (block #1 exists; the
+      # indexer wrote its running file), which is the race the compose file documents. The compose
+      # file's proof-server service is left out on purpose: its health check is the bash-only
+      # /dev/tcp one, so the step above starts that container instead.
+      - name: Start the local devnet
+        run: docker compose -f local-devnet/standalone.yml up -d --wait node indexer
+
+      # The devnet mints all NIGHT to a well-known genesis seed, so there is no faucet and no secret
+      # to provide; the tag-authority and party keys are generated into .secrets/ on first use and
+      # die with the runner.
+      - name: Deploy the registry
+        run: npm run deploy --workspace cli
+        env:
+          ONEPLEDGE_NETWORK: undeployed
+
+      - name: Run the scenario
+        run: npm run demo --workspace cli
+        env:
+          ONEPLEDGE_NETWORK: undeployed
+
+      - name: Devnet logs on failure
+        if: failure()
+        run: |
+          docker ps -aq --filter ancestor=midnightntwrk/proof-server:8.1.0 | head -1 | xargs -r docker logs --tail 200
+          docker compose -f local-devnet/standalone.yml logs --tail 200 node indexer
+
+      # deployments/undeployed.json is git-ignored, and it is the only record of what this run did:
+      # the tx ids, block heights and per-proof timings for all nine circuits.
+      - name: Upload the devnet run record
+        if: always()
+        uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02 # v4.6.2
+        with:
+          name: devnet-deployment-record
+          path: deployments/undeployed.json
+          if-no-files-found: warn
+          retention-days: 14

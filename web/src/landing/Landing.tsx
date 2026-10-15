@@ -172,7 +172,7 @@ export function Landing() {
         <ol className="l-ledger" data-reveal>
           <li>
             <span className="l-margin">{registry.deployBlock}</span>
-            <span className="l-ledger-label">Deploy registry v2</span>
+            <span className="l-ledger-label">Deploy registry {registry.version}</span>
             <a className="mono" href={`${EXPLORER}/transactions/${registry.deployTxHash}`}>
               {shortHash(registry.deployTxHash)}
             </a>

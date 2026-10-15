@@ -1,0 +1,35 @@
+{
+  "provenance": {
+    "recorded": false,
+    "label": "HAND-AUTHORED. NOT A RECORDING.",
+    "note": "Written by hand from the published KSeF OpenAPI contract. No request was ever sent to api-test.ksef.mf.gov.pl, or to any other host, to produce this file. The field names and types come from the contract; every value is invented.",
+    "schema": "BadRequestProblemDetails (errors[] are ApiError)",
+    "endpoint": "POST /invoices/query/metadata, 400 response",
+    "contract": "https://github.com/CIRFMF/ksef-docs/blob/main/open-api.json",
+    "apiVersion": "2.9.0 (build 2.9.0-te)",
+    "authoredOn": "2026-10-15",
+    "invented": [
+      "errors[0].code: the numeric code is invented. The contract types ApiError.code as int32 and requires it, but does not publish the code list, so no value here should be read as a real KSeF error code.",
+      "detail, description, details: invented Polish text standing in for the real messages",
+      "traceId: W3C traceparent shape; instance: the request path",
+      "The rule being violated is real: the contract caps dateRange at 100 days."
+    ]
+  },
+  "status": 400,
+  "contentType": "application/problem+json",
+  "body": {
+    "title": "Bad Request",
+    "status": 400,
+    "instance": "/v2/invoices/query/metadata",
+    "detail": "Zapytanie nie przeszlo walidacji.",
+    "errors": [
+      {
+        "code": 21177,
+        "description": "Zakres dat nie moze przekraczac 100 dni.",
+        "details": ["dateRange.from=2025-01-01T00:00:00Z, dateRange.to=2025-08-26T00:00:00Z"]
+      }
+    ],
+    "timestamp": "2026-10-15T09:14:02.551Z",
+    "traceId": "00-9f5b3ac1d2e84c6fa0b7d9e1f2c34567-1a2b3c4d5e6f7a8b-01"
+  }
+}

@@ -1,0 +1,46 @@
+{
+  "provenance": {
+    "recorded": false,
+    "label": "HAND-AUTHORED. NOT A RECORDING.",
+    "note": "Written by hand from the published KSeF OpenAPI contract. No request was ever sent to api-test.ksef.mf.gov.pl, or to any other host, to produce this file. The field names and types come from the contract; every value is invented.",
+    "schema": "QueryInvoicesMetadataResponse (invoices[] are InvoiceMetadata)",
+    "endpoint": "POST /invoices/query/metadata",
+    "contract": "https://github.com/CIRFMF/ksef-docs/blob/main/open-api.json",
+    "apiVersion": "2.9.0 (build 2.9.0-te)",
+    "authoredOn": "2026-10-15",
+    "invented": [
+      "This response is deliberately self-contradictory and could not come from a healthy KSeF: the number embeds 20250826 but acquisitionDate falls on 2025-08-27. It exists to prove the client treats that disagreement as a hard error instead of trusting one date over the other.",
+      "Everything else is copied from invoice-metadata-200.json"
+    ]
+  },
+  "status": 200,
+  "contentType": "application/json",
+  "body": {
+    "hasMore": false,
+    "isTruncated": false,
+    "permanentStorageHwmDate": null,
+    "invoices": [
+      {
+        "ksefNumber": "5265877635-20250826-0100001AF629-AF",
+        "invoiceNumber": "FV/2025/08/0041",
+        "issueDate": "2025-08-25",
+        "invoicingDate": "2025-08-26T23:58:02.100Z",
+        "acquisitionDate": "2025-08-27T00:12:44.512Z",
+        "permanentStorageDate": "2025-08-27T00:31:10.880Z",
+        "seller": { "nip": "5265877635", "name": "Przykladowy Sprzedawca sp. z o.o." },
+        "buyer": { "identifier": "7010002139", "name": "Przykladowy Nabywca S.A." },
+        "netAmount": 125000.0,
+        "grossAmount": 153750.0,
+        "vatAmount": 28750.0,
+        "currency": "PLN",
+        "invoicingMode": "Online",
+        "invoiceType": "Vat",
+        "formCode": { "systemCode": "FA (3)", "schemaVersion": "1-0E", "value": "FA" },
+        "isSelfInvoicing": false,
+        "hasAttachment": false,
+        "invoiceHash": "jjFWWLLyxcYLNwsXjC8MBym8CtghTYBlRyojwyuIe8A=",
+        "hashOfCorrectedInvoice": null
+      }
+    ]
+  }
+}

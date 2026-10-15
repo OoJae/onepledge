@@ -1,0 +1,25 @@
+{
+  "provenance": {
+    "recorded": false,
+    "label": "HAND-AUTHORED. NOT A RECORDING.",
+    "note": "Written by hand from the published KSeF OpenAPI contract. No request was ever sent to api-test.ksef.mf.gov.pl, or to any other host, to produce this file. The field names and types come from the contract; every value is invented.",
+    "schema": "AuthenticationChallengeResponse",
+    "endpoint": "POST /auth/challenge",
+    "contract": "https://github.com/CIRFMF/ksef-docs/blob/main/open-api.json",
+    "apiVersion": "2.9.0 (build 2.9.0-te)",
+    "authoredOn": "2026-10-15",
+    "invented": [
+      "challenge: a 36-character identifier in the shape KSeF reference numbers take",
+      "clientIp: 203.0.113.7, from the RFC 5737 documentation range, so it can never be read as a real caller's address",
+      "timestampMs: computed from timestamp so the two agree, which a real response would also do"
+    ]
+  },
+  "status": 200,
+  "contentType": "application/json",
+  "body": {
+    "challenge": "20261015-CR-7B3C9D1E2F-4A5B6C7D8E-00",
+    "timestamp": "2026-10-15T09:11:58.420Z",
+    "timestampMs": 1792055518420,
+    "clientIp": "203.0.113.7"
+  }
+}

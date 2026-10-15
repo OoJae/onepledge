@@ -23,6 +23,7 @@ import {
   invoiceNumber,
   lenderPoolState,
   lenderReleaseState,
+  openingOf,
   newAuthority,
   newWorld,
   pledgeAs,
@@ -948,6 +949,54 @@ describe('borrowing base', () => {
         /A borrowing-base pool needs exactly 4 note openings/,
       );
     }
+  });
+
+  it('refuses one receivable counted twice, pledged under two notes after a decline', () => {
+    // The hole this closes: declining frees the tag but leaves the note in the append-only tree, and
+    // the declining lender keeps its opening. So a lender that declines and is then pledged the same
+    // invoice again holds two distinct note commitments for one receivable, and a check that only
+    // compared commitments let it count the invoice twice. Before the fix this proved a floor of
+    // 20,000,000 grosz against a book genuinely worth 11,000,000.
+    const w = newWorld();
+    const inv = attestInvoice(w.authority, w.borrower, invoiceNumber(), '9000000');
+    const first = pledgeAs(w, inv, w.lenderA);
+    w.sim.as(lenderReleaseState(w.lenderA, inv, first.noteSalt));
+    w.sim.declinePledge();
+    const second = pledgeAs(w, inv, w.lenderA);
+
+    const filler = [1, 2].map(() => {
+      const other = attestInvoice(w.authority, w.borrower, invoiceNumber(), '1000000');
+      return openingOf(other, pledgeAs(w, other, w.lenderA).noteSalt);
+    });
+    const pool = [openingOf(inv, first.noteSalt), openingOf(inv, second.noteSalt), ...filler];
+
+    // Two genuinely different notes for one receivable: the premise of the attack.
+    expect(hex(pool[0].tag)).toBe(hex(pool[1].tag));
+    const lenderAKey = pureCircuits.lenderKey(w.lenderA);
+    expect(hex(pureCircuits.noteCommitment(pool[0].tag, lenderAKey, pool[0].invoiceCommit, pool[0].amount, pool[0].salt))).not.toBe(
+      hex(pureCircuits.noteCommitment(pool[1].tag, lenderAKey, pool[1].invoiceCommit, pool[1].amount, pool[1].salt)),
+    );
+
+    w.sim.as(lenderPoolState(w.lenderA, pool));
+    expect(() => w.sim.proveBorrowingBase(ROUND, 20_000_000n)).toThrow(/A receivable appears twice in the pool/);
+    // And it is refused even at a floor the real book clears, because the pool itself is invalid.
+    expect(() => w.sim.proveBorrowingBase(ROUND, 1n)).toThrow(/A receivable appears twice in the pool/);
+    expect(w.sim.ledger().drawCount).toBe(0n);
+  });
+
+  it('still accepts a pool of four genuinely different receivables after a decline', () => {
+    // The positive control for the test above: a decline in the lender's history must not make its
+    // book unprovable, only the duplicated receivable.
+    const w = newWorld();
+    const declined = attestInvoice(w.authority, w.borrower, invoiceNumber(), '9000000');
+    const { noteSalt } = pledgeAs(w, declined, w.lenderA);
+    w.sim.as(lenderReleaseState(w.lenderA, declined, noteSalt));
+    w.sim.declinePledge();
+
+    const pool = pledgePool(w, w.lenderA, AMOUNTS);
+    w.sim.as(lenderPoolState(w.lenderA, pool));
+    w.sim.proveBorrowingBase(ROUND, TOTAL);
+    expect(w.sim.ledger().drawCount).toBe(1n);
   });
 
   it('is what a lender does with the openings its inbox decrypted', () => {

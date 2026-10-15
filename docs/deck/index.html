@@ -40,6 +40,11 @@
   .grid3 { display: grid; grid-template-columns: repeat(3, 1fr); gap: 24px; }
   .card { background: var(--card); border: 1px solid var(--rule); border-radius: 16px; padding: 32px; }
   .card p, .card li { font-size: 23px; margin: 0; }
+  /* Denser card, for the three slides that genuinely carry a mechanism and its limits together. */
+  .card.sm { padding: 24px; }
+  .card.sm h3 { font-size: 26px; }
+  .card.sm p, .card.sm li { font-size: 21px; line-height: 1.33; }
+  .note { font-size: 22px; color: var(--soft); margin: 20px 0 0; }
   .bad { border-color: #e7c9c5; }
   .bad h3 { color: var(--danger); }
   .good h3 { color: var(--accent); }
@@ -59,11 +64,15 @@
   ul.tight { margin: 0; padding-left: 26px; }
   ul.tight li { margin-bottom: 8px; }
   .chip { display: inline-block; font-family: var(--mono); font-size: 19px; background: var(--card); border: 1px solid var(--rule); border-radius: 8px; padding: 6px 12px; margin: 0 8px 8px 0; color: var(--ink); }
-  .stack { display: grid; gap: 14px; }
+  .stack { display: grid; gap: 12px; }
   .kv { display: grid; grid-template-columns: 250px 1fr; gap: 10px 24px; font-size: 24px; align-items: baseline; }
   .kv dt { color: var(--muted); font-size: 17px; text-transform: uppercase; letter-spacing: .06em; font-weight: 700; }
   .kv dd { margin: 0; color: var(--ink); font-weight: 600; overflow-wrap: anywhere; }
   .shot { border: 1px solid var(--rule); border-radius: 12px; width: 100%; display: block; }
+  /* Screenshots sit in a column sized so a 16:10 capture lands at its natural height; the cap is a
+     guard against a taller one, and `contain` means it is letterboxed rather than cropped. If the
+     file is missing the box collapses to its alt text and the slide still reads. */
+  .shot.cap { max-height: 320px; object-fit: contain; object-position: top; }
   .fix { border-left: 6px solid var(--accent); }
   .compare td, .compare th { font-size: 21px; padding: 12px 14px; }
   .compare td:first-child { white-space: normal; width: 30%; }
@@ -77,9 +86,9 @@
 <section class="slide">
   <div class="brand"><span class="mark">1</span>OnePledge</div>
   <div style="margin-top:auto;margin-bottom:auto">
-    <p class="kicker">Midnight Buildathon · Wave 2</p>
+    <p class="kicker">Midnight Buildathon · Wave 2 · registry v4 on Preprod</p>
     <h1>One pledge per invoice.<br/>No lender sees another's book.</h1>
-    <p class="lede">A registry on Midnight that refuses to let the same receivable be financed twice, while each lender sees only its own deals.</p>
+    <p class="lede">A registry on Midnight that refuses to let the same receivable be financed twice — and now lets a lender prove its book clears a floor without showing the book.</p>
     <p style="margin-top:36px"><span class="chip">Try it: onepledge.vercel.app</span><span class="chip">github.com/OoJae/onepledge</span></p>
   </div>
   <div class="footer"><span>This project is built on the Midnight Network.</span><span>Apache-2.0 · Compact 0.31.1</span></div>
@@ -131,150 +140,277 @@
   <div class="flow">
     <div class="step"><div class="n">01 · IDENTITY</div><h3>KSeF number</h3><p>Poland's e-invoicing system gives each invoice issued through it one 35-character number with a CRC-8. One spelling only.</p></div>
     <div class="step"><div class="n">02 · TAG</div><h3>Keyed, not guessable</h3><p>The tag authority computes <span class="mono">T = HMAC(key, number)</span>. Same invoice, same tag.</p></div>
-    <div class="step"><div class="n">03 · ATTEST</div><h3>One signed digest</h3><p>Its Jubjub key signs a digest of (domain, registry, T, invoice commitment, day, expiry, borrower key).</p></div>
-    <div class="step"><div class="n">04 · PROVE</div><h3>Tag set rejects repeats</h3><p>The circuit checks the signature, window, expiry and lender membership, then adds T to a public set forever.</p></div>
+    <div class="step"><div class="n">03 · ATTEST</div><h3>One signed digest</h3><p>Its Jubjub key signs a digest of (domain, registry, T, invoice commitment, <b>amount</b>, day, expiry, borrower key).</p></div>
+    <div class="step"><div class="n">04 · PROVE</div><h3>Tag set rejects repeats</h3><p>The circuit checks the signature, window, expiry and lender membership, then adds T to a public set. Only a decline takes it back out.</p></div>
   </div>
-  <p style="margin-top:36px">
-    <span class="chip">in-circuit Jubjub Schnorr</span><span class="chip">persistentHash of the whole attestation</span><span class="chip">Set&lt;Bytes&lt;32&gt;&gt;</span><span class="chip">HistoricMerkleTree</span><span class="chip">release nullifiers</span>
+  <p class="note" style="margin-top:32px">Registry v4 carries nine circuits, each with a proving key and an on-chain verifier key:</p>
+  <p style="margin-top:12px">
+    <span class="chip">approveAdmit</span><span class="chip">executeAdmit</span><span class="chip">approveRotate</span><span class="chip">executeRotate</span><span class="chip">pledge</span><span class="chip">release</span><span class="chip">acceptPledge</span><span class="chip">declinePledge</span><span class="chip">proveBorrowingBase</span>
   </p>
   <div class="footer"><span>OnePledge</span><span>4</span></div>
 </section>
 
 <!-- 5 -->
 <section class="slide">
-  <p class="kicker">Selective disclosure</p>
-  <h2>Everyone learns what they need, and no more.</h2>
-  <div class="card" style="padding:12px 28px">
-    <table>
-      <tr><th>Party</th><th>Learns</th><th>Never learns</th></tr>
-      <tr><td>Financing lender</td><td><span class="pill yes">full invoice</span> checked against the signed commitment</td><td>Other lenders' deals</td></tr>
-      <tr><td>Rival lender given a tag</td><td><span class="pill yes">"already pledged"</span></td><td>By whom, how much, which terms</td></tr>
-      <tr><td>Public chain</td><td>Opaque tags, note commitments, roots, expiry days, counts</td><td><span class="pill no">invoice, amount, borrower, lender</span></td></tr>
-      <tr><td>Tag authority</td><td>Its attested invoices, and whether and when each was pledged</td><td>Which lender financed them, or the terms</td></tr>
-    </table>
+  <p class="kicker">Shipped this wave · the registrar committee</p>
+  <h2 style="margin-bottom:18px">Two registrars admit a lender. The chain never says which two.</h2>
+  <div class="grid2" style="grid-template-columns:.72fr 1.28fr;margin-bottom:14px">
+    <div class="card sm fix">
+      <h3>What we had, and admitted</h3>
+      <p>One key admitted every lender. Losing it stopped admissions; rotating it to a wrong key stopped them
+      permanently. We published that ourselves as F68.</p>
+    </div>
+    <div class="card sm">
+      <h3>Now: a sealed 2-of-3</h3>
+      <p><span class="mono">registrars</span> is a <span class="mono">HistoricMerkleTree&lt;4, Bytes&lt;32&gt;&gt;</span>
+      of <span class="mono">committeeLeaf(epoch, registrarKey)</span> leaves, a sealed threshold of 2, a
+      <span class="mono">proposals</span> map from action to approval nullifiers, and an
+      <span class="mono">executed</span> set. Two members must approve before a lender is admitted; a member
+      cannot approve twice; an outsider cannot approve at all; and a rotation needs two approvals and voids
+      every pending proposal.</p>
+    </div>
   </div>
-  <p style="margin-top:24px">Enforced by privacy tests that check every value longer than two bytes in each circuit's public transcript against an allowlist.</p>
-  <div class="footer"><span>OnePledge</span><span>5</span></div>
+  <div class="card sm">
+    <h3>An approval does not say who gave it</h3>
+    <p>A member proves its committee leaf by Merkle path, so an approval publishes the action, the root
+    everyone already has, and a nullifier naming no member. The alternative — a
+    <span class="mono">Set</span> the circuit calls <span class="mono">member()</span> on — was rejected:
+    every ledger key a Compact circuit touches must be disclosed, so it would publish which registrar
+    vouches for which lender, a log of the relationships this product promises not to keep.</p>
+    <p style="margin-top:14px;color:var(--ink)"><b>All three seats are held by the deployer in this demo.</b>
+    The mechanism is genuinely enforced on chain; the custody is not. The anonymity set is three.</p>
+  </div>
+  <div class="footer"><span>docs/security-review.md · F68</span><span>5</span></div>
 </section>
 
 <!-- 6 -->
 <section class="slide">
-  <p class="kicker">Live on Midnight Preprod · registry v3</p>
-  <h2>Deployed, exercised, and checkable without a wallet.</h2>
-  <div class="grid2" style="align-items:start">
+  <p class="kicker">Shipped this wave · the borrowing base</p>
+  <h2>A lender can prove its book clears a floor without showing the book.</h2>
+  <div class="grid2" style="grid-template-columns:1.05fr .95fr;align-items:start">
     <div class="stack">
-      <dl class="kv card">
-        <dt>Contract</dt><dd class="mono">488f6715…ba4900</dd>
-        <dt>Deployed</dt><dd>block 2991455</dd>
-        <dt>Scenario</dt><dd>2 lenders admitted; a pledge accepted, a double pledge refused, a pledge declined and the freed invoice financed elsewhere, then released</dd>
-        <dt>Proving time</dt><dd>0.9–4.5 s per transaction on a laptop</dd>
-        <dt>Upgrade key</dt><dd>1-of-1 deployer key, disclosed</dd>
-      </dl>
-      <p style="margin:0;font-size:22px"><span class="mono">npm run verify:onchain</span> compares every on-chain verifier key with this repository.</p>
+      <div class="card sm">
+        <h3>Why a lender wants this</h3>
+        <p>A factor that finances receivables is itself financed, and its funding bank wants to see the book
+        behind a drawdown. Showing it means handing over the client list, the invoices and the amounts — the
+        same disclosure problem the registry exists to avoid, one level up.</p>
+      </div>
+      <div class="card sm">
+        <h3><span class="mono">proveBorrowingBase(round, floor)</span></h3>
+        <p>Proves that four receivables pledged to this lender are together worth at least a public floor.
+        <b style="color:var(--ink)">Published:</b> the round, the floor and an unlinkable draw id.
+        <b style="color:var(--ink)">Not published:</b> any individual amount, which receivables are in the
+        pool, or whose book it is. Authorisation is structural rather than checked — the circuit recomputes
+        each note commitment from the prover's own secret, so only the lender of record for all four can
+        produce the proof.</p>
+      </div>
     </div>
-    <img class="shot" src="live-v2.png" alt="The Live page reading the v3 registry from the Preprod indexer" />
+    <div class="card sm fix">
+      <h3>What it cannot do</h3>
+      <ul class="tight">
+        <li><b style="color:var(--ink)">The pool is fixed at four.</b> A depth-16 Merkle path plus a note
+        recompute costs about 4.8 MB of prover key per receivable;
+        <span class="mono">proveBorrowingBase.prover</span> is 19.5 MB of a 93 MB bundle. Larger books run a
+        draw per round over a rolling four.</li>
+        <li><b style="color:var(--ink)">It cannot require that the pooled notes were accepted, or that they
+        were not declined or released.</b> All three live in <span class="mono">Set</span>s, and proving
+        membership would disclose the nullifier that ties the draw back to the decisions behind it —
+        grouping a lender's book.</li>
+        <li>One draw per (round, lender).</li>
+      </ul>
+    </div>
   </div>
-  <div class="footer"><span>OnePledge</span><span>6</span></div>
+  <div class="footer"><span>contract/src/registry.compact</span><span>6</span></div>
 </section>
 
 <!-- 7 -->
 <section class="slide">
-  <p class="kicker">Shipped in Wave 2</p>
-  <h2>A pledge the lender never agreed to.</h2>
-  <div class="grid2" style="margin-bottom:28px">
-    <div class="card fix">
-      <h3>What Wave 1 shipped, and admitted</h3>
-      <p>A borrower could pledge an invoice to any admitted lender without asking. The tag was used up
-      forever, whether or not that lender ever financed it, and nothing could undo it. We published it
-      ourselves as F10.</p>
+  <p class="kicker">Shipped this wave · delivery and the lender inbox</p>
+  <h2 style="margin-bottom:28px">The invoice stopped travelling by email.</h2>
+  <div class="grid2" style="grid-template-columns:1.8fr 1fr;align-items:start">
+    <div class="stack">
+      <div class="card sm">
+        <h3>Encrypted to the lender, held on chain</h3>
+        <p>The borrower encrypts the note opening to the lender, and the ledger holds it in
+        <span class="mono">deliveries: Map&lt;Bytes&lt;32&gt;, Opaque&lt;"Uint8Array"&gt;&gt;</span>, keyed by the
+        note commitment.</p>
+      </div>
+      <div class="card sm">
+        <h3>A lender finds its own by trying all of them</h3>
+        <p>Trial decryption, the way shielded protocols do it: a fresh ephemeral key per delivery means two
+        deliveries to the same lender share no bytes, and nothing on chain says who any delivery is for.
+        Publishing a per-lender index instead would let anyone holding a lender's key link that lender's whole
+        book.</p>
+      </div>
+      <div class="card sm">
+        <h3>Garbage is a decline, not a bug</h3>
+        <p>Because the ciphertext is <span class="mono">Opaque</span> the circuit cannot constrain it, so a
+        borrower can post nonsense. The lender then decrypts nothing and declines — which is what the void path
+        is for.</p>
+      </div>
     </div>
-    <div class="card">
-      <h3>Wave 2: the lender decides</h3>
-      <p><span class="mono">acceptPledge</span> and <span class="mono">declinePledge</span>. The lender of
-      record proves it is the lender the same way a release does. Declining removes the tag, so the
-      receivable can be financed elsewhere. A decision is an opaque nullifier: the ledger never says which
-      lender decided, or on what.</p>
-    </div>
-  </div>
-  <div class="card">
-    <h3>Why this answers the hardest question about the idea</h3>
-    <p>A shared registry sounds like it needs the whole market to join first. It does not. It works with
-    <strong>two</strong> lenders, because the only thing either one learns is one fact about one invoice:
-    already pledged. No consortium has to form, and no participant exposes its book to join.</p>
-  </div>
-  <div class="footer"><span>registry v3</span><span>7</span></div>
-</section>
-
-<section class="slide">
-  <p class="kicker">Tested and self-audited</p>
-  <h2>We attacked it before anyone else could.</h2>
-  <div class="grid3" style="margin-bottom:28px">
-    <div class="card"><div class="stat">192</div><div class="statlabel">tests: adversarial witnesses, forgery, privacy allowlists</div></div>
-    <div class="card"><div class="stat">88</div><div class="statlabel">findings from our own adversarial self-review, each challenged by a skeptic</div></div>
-    <div class="card"><div class="stat">1</div><div class="statlabel">critical bug found in v1, fixed in v2, disclosed in full</div></div>
-  </div>
-  <div class="grid2">
-    <div class="card fix">
-      <h3>F01: one attestation, 256 pledges</h3>
-      <p>v1 signed only 248 bits of the tag, so changing its last byte passed. v2 signs one SHA-256 digest of the whole attestation, bound to the registry and an expiry. A regression test flips every byte.</p>
-    </div>
-    <div class="card">
-      <h3>Honest limits</h3>
-      <ul class="tight">
-        <li>Single tag authority (threshold in Wave 3)</li>
-        <li>No decision deadline: an undecided pledge holds the tag</li>
-        <li>Synthetic KSeF numbers until the test-environment adapter</li>
-      </ul>
+    <div class="stack">
+      <img class="shot cap" src="inbox-v4.png" alt="The lender inbox: how many on-chain deliveries were tried, which of them opened for this lender, and a borrowing-base draw against four of them" />
+      <p class="note" style="margin:0">The attested amount is now signed by the tag authority and bound into
+      the note commitment, and never published — a borrowing-base proof is only as honest as the amounts it
+      sums.</p>
     </div>
   </div>
-  <div class="footer"><span>docs/security-review.md</span><span>8</span></div>
+  <div class="footer"><span>onepledge.vercel.app/inbox</span><span>7</span></div>
 </section>
 
 <!-- 8 -->
 <section class="slide">
-  <p class="kicker">Market and roadmap</p>
-  <h2>Start where every invoice already has one ID.</h2>
-  <div class="grid2">
-    <div class="card">
-      <h3>Beachhead: factoring on KSeF</h3>
-      <p>Poland's national e-invoicing gives B2B invoices a canonical number. Buyers: factors, supply-chain-finance banks, private-credit funds. Distribution: the e-invoicing software that already connects them.</p>
-      <p style="margin-top:16px">Useful with just two lenders. No consortium needed.</p>
-      <p style="margin-top:16px"><b>Model:</b> a KSeF-connected e-invoicing provider or lenders' association runs the tag authority; lenders pay per attestation checked or pledge registered.</p>
-    </div>
-    <div class="card">
-      <h3>Next</h3>
-      <ul class="tight">
-        <li><b>Wave 2:</b> Lace-connected borrower desk and lender inbox, lender acceptance and void path, encrypted invoice delivery, KSeF test-environment adapter, 2-of-3 upgrade committee, practitioner interviews</li>
-        <li><b>Wave 3:</b> threshold tags, pledge assignment between lenders, a reusable uniqueness module for any guessable-ID registry</li>
-      </ul>
-    </div>
+  <p class="kicker">Selective disclosure</p>
+  <h2>Everyone learns what they need, and no more.</h2>
+  <div class="card" style="padding:12px 28px">
+    <table class="compare">
+      <tr><th>Party</th><th>Learns</th><th>Never learns</th></tr>
+      <tr><td>Financing lender</td><td><span class="pill yes">full invoice</span> decrypted from its own delivery, checked against the signed commitment</td><td>Other lenders' deals</td></tr>
+      <tr><td>Rival lender given a tag</td><td><span class="pill yes">"already pledged"</span></td><td>By whom, how much, which terms</td></tr>
+      <tr><td>The lender's own funder</td><td><span class="pill yes">"this round cleared the floor"</span></td><td>Which receivables, their amounts, or whose book</td></tr>
+      <tr><td>Public chain</td><td>Opaque tags, note commitments, ciphertexts, roots, expiry days, draw floors, counts</td><td><span class="pill no">invoice, amount, borrower, who financed it</span></td></tr>
+      <tr><td>Tag authority</td><td>Its attested invoices, and whether and when each was pledged</td><td>Which lender financed them, or the terms</td></tr>
+    </table>
   </div>
-  <div class="footer"><span>OnePledge</span><span>9</span></div>
+  <p class="note">Enforced by privacy tests that check every value longer than two bytes in each circuit's public transcript against an allowlist.</p>
+  <div class="footer"><span>contract/src/test/privacy.test.ts</span><span>8</span></div>
 </section>
 
 <!-- 9 -->
 <section class="slide">
-  <p class="kicker">Team</p>
-  <h2>OoJae, solo builder.</h2>
+  <p class="kicker">Live on Midnight Preprod · registry v4</p>
+  <h2 style="margin-bottom:18px">Nineteen checks say the live contract is this repository.</h2>
+  <div class="grid2" style="grid-template-columns:1.8fr 1fr;align-items:start">
+    <div class="stack">
+      <dl class="kv card sm" style="grid-template-columns:200px 1fr">
+        <dt>Contract</dt><dd class="mono">ce3030dd…0c8e71</dd>
+        <dt>Deployed</dt><dd>block 2992668</dd>
+        <dt>Upgrade key</dt><dd>1-of-1 deployer key, disclosed</dd>
+      </dl>
+      <div class="card sm">
+        <h3>The scenario, on chain</h3>
+        <p>Two registrars approve each lender before it is admitted, and one acting alone is refused. A
+        borrower pledges an attested invoice; the same invoice offered to a second lender is refused. The named
+        lender accepts. A declined pledge frees its receivable to be financed elsewhere. The lender proves four
+        of its receivables clear a floor, is refused when it overstates, and releases a paid pledge. Then the
+        committee rotates itself.</p>
+        <!-- deck: v4 scenario counts pending -->
+      </div>
+    </div>
+    <div class="stack">
+      <img class="shot cap" src="live-v4.png" alt="The Live page reading the v4 registry from the Preprod indexer: the contract address, the registrar threshold and the ledger counters" />
+      <p class="note" style="margin:0"><span class="mono">npm run verify:onchain</span> passes 19 checks
+      against the live contract, among them that each of the nine on-chain verifier keys equals the committed
+      <span class="mono">contract/src/managed/registry/keys/*.verifier</span>, and that each recorded
+      registrar-committee seat is present in the on-chain committee tree.</p>
+    </div>
+  </div>
+  <div class="footer"><span>No wallet, no transactions · registry v3 (488f6715…ba4900, block 2991455) is archived in deployments/archive/preprod-v3-488f6715.json</span><span>9</span></div>
+</section>
+
+<!-- 10 -->
+<section class="slide">
+  <p class="kicker">Tested and self-audited</p>
+  <h2>We attacked it before anyone else could.</h2>
+  <div class="grid3" style="margin-bottom:18px">
+    <div class="card" style="padding:24px"><div class="stat">270</div><div class="statlabel">tests across two suites — 189 on the compiled circuits, 81 on the attester: adversarial witnesses, forgery, privacy allowlists, KSeF format, sealed delivery</div></div>
+    <div class="card" style="padding:24px"><div class="stat">88</div><div class="statlabel">findings from our own adversarial self-review, each challenged by a skeptic. It covered Wave 1; this wave's new circuits have not had a pass of their own</div></div>
+    <div class="card" style="padding:24px"><div class="stat">1</div><div class="statlabel">critical bug found by that review, fixed, and disclosed in full</div></div>
+  </div>
   <div class="grid2">
-    <div class="card">
-      <h3>Built in Wave 1</h3>
+    <div class="card sm fix">
+      <h3>F01: one attestation, 256 pledges</h3>
+      <p>v1 signed only 248 bits of the tag, so changing its last byte passed. The fix signs one SHA-256
+      digest of the whole attestation, bound to the registry and an expiry. A regression test flips every
+      byte.</p>
+    </div>
+    <div class="card sm">
+      <h3>Honest limits</h3>
       <ul class="tight">
-        <li>Compact registry contract and in-circuit Schnorr</li>
-        <li>Tag authority, CLI and Preprod deployment</li>
-        <li>Web demo, security review and threat model</li>
+        <li>One trusted tag authority</li>
+        <li>Three committee seats in one pair of hands</li>
+        <li>A 1-of-1 contract upgrade key</li>
+        <li>No decision deadline, so an undecided pledge holds the tag</li>
+        <li>The borrowing base cannot require that pooled notes were accepted or unreleased</li>
+        <li>Synthetic KSeF numbers</li>
       </ul>
     </div>
-    <div class="card">
-      <h3>Find it</h3>
-      <dl class="kv" style="grid-template-columns: 150px 1fr">
+  </div>
+  <div class="footer"><span>docs/security-review.md · docs/threat-model.md</span><span>10</span></div>
+</section>
+
+<!-- 11 -->
+<section class="slide">
+  <p class="kicker">Market</p>
+  <h2 style="margin-bottom:14px">It works with two lenders. No consortium has to form.</h2>
+  <div class="grid2" style="margin-bottom:14px">
+    <div class="card sm">
+      <h3>The objection every shared registry dies on</h3>
+      <p>A registry like this sounds like it needs the whole market to join first. It does not. It works with
+      <b style="color:var(--ink)">two</b> lenders, because the only thing either one learns is one fact about
+      one invoice: already pledged. No critical mass, no governance body, and no participant shows its book to
+      anyone — not to a rival, not to an operator, not to the registry.</p>
+    </div>
+    <div class="card sm">
+      <h3>And a reason to join for its own sake</h3>
+      <p><span class="mono">proveBorrowingBase</span> is useful to a single lender with no counterparty yet: it
+      turns a drawdown request to its own funder into a proof instead of a disclosure. A factor adopts
+      OnePledge to shorten its own funding conversation, and gets double-pledge protection as a side effect
+      of already being there.</p>
+    </div>
+  </div>
+  <div class="card sm">
+    <h3>The tag authority is a role Polish law already defines</h3>
+    <p>Of all KSeF permissions, only two can carry the <span class="mono">canDelegate</span> flag:
+    <span class="mono">InvoiceWrite</span> and <span class="mono">InvoiceRead</span>. An intermediary — a
+    <i>podmiot pośredniczący</i> — holding delegated <span class="mono">InvoiceRead</span> in a client's context
+    may fetch that client's invoice lists. That is exactly the party this design needs: a provider or bureau
+    that already, lawfully, reads its clients' invoices. It does not remove the single-authority assumption;
+    it only says the role is a real one.</p>
+  </div>
+  <p class="note" style="margin-top:14px">Beachhead: factoring on KSeF. Buyers: factors, supply-chain-finance banks, private-credit funds. A KSeF-connected provider or a lenders' association runs the tag authority; lenders pay per attestation or pledge.</p>
+  <div class="footer"><span>Source: CIRFMF/ksef-docs · uprawnienia.md</span><span>11</span></div>
+</section>
+
+<!-- 12 -->
+<section class="slide">
+  <p class="kicker">Roadmap · team</p>
+  <h2>What shipped this wave, and what it still needs.</h2>
+  <div class="grid3">
+    <div class="card sm">
+      <h3>Shipped this wave</h3>
+      <ul class="tight">
+        <li>A 2-of-3 registrar committee, replacing the single registrar key</li>
+        <li>Encrypted delivery on chain and a lender inbox that finds its own by trial decryption</li>
+        <li>Borrowing-base draws</li>
+        <li>Lender acceptance and the void path</li>
+        <li>The attested amount, bound into the note commitment and still never published</li>
+        <li>A wallet-connected borrower desk, and browser end-to-end tests in CI</li>
+      </ul>
+    </div>
+    <div class="card sm fix">
+      <h3>Next: Wave 3</h3>
+      <ul class="tight">
+        <li>A threshold tag authority, so no single party can compute or sign tags</li>
+        <li>Key rotation and recovery for it</li>
+        <li>An external security audit</li>
+        <li>Proving-cost work</li>
+        <li>A pilot with one factor, on real KSeF invoices</li>
+      </ul>
+    </div>
+    <div class="card sm">
+      <h3>Built by OoJae, solo</h3>
+      <dl class="kv" style="grid-template-columns: 110px 1fr;font-size:21px">
         <dt>Demo</dt><dd>onepledge.vercel.app</dd>
         <dt>Code</dt><dd>github.com/OoJae/onepledge</dd>
         <dt>GitHub</dt><dd>@OoJae</dd>
       </dl>
+      <p style="margin-top:18px">Compact contract and in-circuit Schnorr, tag authority, CLI, Preprod
+      deployment, web app, security review and threat model.</p>
     </div>
   </div>
-  <div class="footer"><span>This project is built on the Midnight Network.</span><span>10</span></div>
+  <div class="footer"><span>This project is built on the Midnight Network.</span><span>12</span></div>
 </section>
 
 </body>

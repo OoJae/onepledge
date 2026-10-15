@@ -3,7 +3,7 @@
 import { CanvasTexture, NoColorSpace, SRGBColorSpace, type Texture } from 'three';
 import { ring, rosette } from '../../brand/guilloche.ts';
 import { NUMERAL_ONE } from '../../brand/mark.ts';
-import { DEMO_KSEF, V2_TAGS } from '../../brand/facts.ts';
+import { DEMO_KSEF, DEMO_TAGS } from '../../brand/facts.ts';
 
 const canvas = (w: number, h: number) => {
   const c = document.createElement('canvas');
@@ -121,7 +121,7 @@ export function tagTexture(label: string, anisotropy: number, lit = false) {
   return finish(new CanvasTexture(c), true, anisotropy);
 }
 
-export const TAG_LABELS = [V2_TAGS[0].slice(0, 12) + '…', V2_TAGS[1].slice(0, 12) + '…'];
+export const TAG_LABELS = [DEMO_TAGS[0].slice(0, 12) + '…', DEMO_TAGS[1].slice(0, 12) + '…'];
 
 export function shadowTexture() {
   const c = canvas(256, 256);

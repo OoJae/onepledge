@@ -1,17 +1,26 @@
 {
   "network": "preprod",
-  "version": "v3",
+  "version": "v4",
   "status": "active",
   "maintenanceAuthority": {
     "committeeSize": 1,
     "threshold": 1,
     "note": "Deployer-held upgrade key: can insert or remove verifier keys. Planned: 2-of-3 committee, then frozen."
   },
-  "contractAddress": "488f67156c541957614bcd7be7e88593d5fc68bb1188fe18893c0485f0ba4900",
-  "deployTxId": "00e66927f15441a6822fbb1f36dd13b355ec43b8918cff05695401938cecb5b94f",
-  "deployTxHash": "b48711e29351677ef858376009d6ffba5d0651239462b4b2e34beac244d916bd",
-  "deployBlockHeight": 2991455,
-  "deployedAt": "2026-10-15T12:16:29.435Z",
+  "registrarCommittee": {
+    "threshold": 2,
+    "members": [
+      "e102f3dcd7e7849882cad7b32d45a42858864442134f3adceb0a91ba1d73d904",
+      "efcc0a2b60a7bfd3653a46b93c5b1099129f0a6deb72cd47dfb1345d2cd10237",
+      "154a61f80b8dad1f4c3fa7ab263299ea80ce5d82b8ba97ad2b0ae3eaeeb799b8"
+    ],
+    "note": "All three seats are deployer-held in this demo. The 2-of-3 mechanism is genuinely enforced on chain; the key custody is not distributed."
+  },
+  "contractAddress": "ce3030ddcdc21a9d0d2289335dccff42f99068d7c32673589669874b1e0c8e71",
+  "deployTxId": "00dcaa426af543d0e7c40fa8919b653390e7e7cff4b7df40c3168b023ca37b143b",
+  "deployTxHash": "67ebc221f2ad806206f5d2ba6b6ee4a8cb214461af329ae454a8f39019124d4d",
+  "deployBlockHeight": 2992668,
+  "deployedAt": "2026-10-15T14:17:43.801Z",
   "tagAuthority": {
     "x": "48817866768362115749717640132431737144656854862769456630695825445246438828101",
     "y": "26210506021675530152345939211530494862711628490685782702923573844959068851475"
@@ -20,98 +29,228 @@
   "windowEnd": 20819,
   "events": [
     {
-      "label": "Registrar admits lender A",
-      "circuit": "admitLender",
-      "txId": "00115a9cbdfd736c66fadacd9ca4cba446e50fa3fe130a3d64bd2aff905b150b5c",
-      "txHash": "c7f2edb94fb5e6d04e796490913363026773483212c717315470528f0b8401ae",
-      "blockHeight": 2991568,
+      "label": "Registrar 1 approves lender A",
+      "circuit": "approveAdmit",
+      "txId": "007eae8a9e93e7f724570df1f694f58962611375cb462a4f0bfa4faac92dd5e6a2",
+      "txHash": "8939884b1c156f62b456a06844e714f0ceb860f3d47d8f1ec11b57c4706312fa",
+      "blockHeight": 2992770,
       "outcome": "accepted",
-      "at": "2026-10-15T12:27:43.688Z",
-      "proveSeconds": 0.6,
-      "totalSeconds": 28.4
+      "at": "2026-10-15T14:27:55.715Z",
+      "proveSeconds": 4.1,
+      "totalSeconds": 30.3
     },
     {
-      "label": "Registrar admits lender B",
-      "circuit": "admitLender",
-      "txId": "0034f410c221b913e07595d28b0177e6e7f8878850fce9c8f64fde431116f3d4b6",
-      "txHash": "dac7e2d3ab3c530fdec6015aeb0a6c660b75a9f2ba7f2adad184b0dea4902083",
-      "blockHeight": 2991573,
+      "label": "One registrar alone admits lender A",
+      "circuit": "executeAdmit",
+      "outcome": "rejected before proving: Below the registrar threshold",
+      "at": "2026-10-15T14:27:56.345Z"
+    },
+    {
+      "label": "Registrar 2 approves lender A",
+      "circuit": "approveAdmit",
+      "txId": "0065247a5def7ba8363c9070d9164b2515c957fb32281aa28d5d1fcfa1428ae031",
+      "txHash": "3088377f7b822a246de80d82ee470cdf4ceb86bcfc2404aac0a976aefacb900a",
+      "blockHeight": 2992775,
       "outcome": "accepted",
-      "at": "2026-10-15T12:28:13.061Z",
-      "proveSeconds": 0.7,
-      "totalSeconds": 29
+      "at": "2026-10-15T14:28:25.568Z",
+      "proveSeconds": 1.9,
+      "totalSeconds": 28.7
+    },
+    {
+      "label": "Committee admits lender A",
+      "circuit": "executeAdmit",
+      "txId": "00bda04fa940e8d5eed47d9e3e0c6655fdd73f604cad7331811aebef2fbade7213",
+      "txHash": "c7947c27e9473eea0aff4492e358a5b67cd45bd4a1b759ea277b14de6206b404",
+      "blockHeight": 2992780,
+      "outcome": "accepted",
+      "at": "2026-10-15T14:28:56.094Z",
+      "proveSeconds": 0.8,
+      "totalSeconds": 29.3
+    },
+    {
+      "label": "Registrar 1 approves lender B",
+      "circuit": "approveAdmit",
+      "txId": "00b576c2e388dea4016fac33a741bc6994dc31095a14262ebaa8665a0edc50790b",
+      "txHash": "ca393a7ca3b7def441e9dd0f45c008e3f7965671625b29dde8dbe0d05aba7861",
+      "blockHeight": 2992785,
+      "outcome": "accepted",
+      "at": "2026-10-15T14:29:28.683Z",
+      "proveSeconds": 2.1,
+      "totalSeconds": 32
+    },
+    {
+      "label": "Registrar 2 approves lender B",
+      "circuit": "approveAdmit",
+      "txId": "0044a7e0879d36e96f9173d74da175b8786ea0c82580e950065dc77c87f88eade4",
+      "txHash": "85d2dbc6d07eb288faefb9a4bcd3dc61434ed3b67691726e3346e037f55661c7",
+      "blockHeight": 2992790,
+      "outcome": "accepted",
+      "at": "2026-10-15T14:29:55.702Z",
+      "proveSeconds": 2.2,
+      "totalSeconds": 26.4
+    },
+    {
+      "label": "Committee admits lender B",
+      "circuit": "executeAdmit",
+      "txId": "00bd2b1bef0a4b191f45137236f41acdba97b1ee5a453cb90616b0e3bbf0853158",
+      "txHash": "f93840d439b1e5b4f555999bc796d0e56d491f036a4bd53bb024929106c16680",
+      "blockHeight": 2992834,
+      "outcome": "accepted",
+      "at": "2026-10-15T14:34:21.261Z",
+      "proveSeconds": 0.6,
+      "totalSeconds": 43.3
+    },
+    {
+      "label": "One orphaned pledge on chain",
+      "circuit": "note",
+      "txHash": "d758553c19d06d979e9fb7981c68fa3f0b20db89d5845330e15d38044eb7a225",
+      "blockHeight": 2992840,
+      "outcome": "An earlier run of the scenario lost its connection mid-way and did not persist its note salts, so nobody holds the opening for that note: it can never be accepted, declined or released. It is counted by pledgeCount and acceptCount and by one tag in the public set, which is why those run one ahead of the steps above. It is listed here rather than quietly dropped. The scenario now persists its salts, so a dropped connection is resumed instead of abandoned.",
+      "at": "2026-10-15T14:34:52.446Z"
     },
     {
       "label": "Borrower pledges invoice 1 to lender A",
       "circuit": "pledge",
-      "txId": "0084b751eb835a268b7e6afc633585188e3d54a3feb3b7ce6e4713f0cae73758ec",
-      "txHash": "d7012e0af2de4282b4b8d6e330cdb41ffbaa80ba83a4789d1345833b8a7bda26",
-      "blockHeight": 2991579,
+      "txId": "00086a43dc36850bcd0786ca444b39da565d6f91c9d164e8e5448a042d7a6cf459",
+      "txHash": "53b1dfbfe5c85402ae63f12b1f8717c34124ff2aff0afb6473c45895ce2a7cc7",
+      "blockHeight": 2992908,
       "outcome": "accepted",
-      "at": "2026-10-15T12:28:50.361Z",
-      "proveSeconds": 2.7,
-      "totalSeconds": 35.9
+      "at": "2026-10-15T14:41:44.683Z",
+      "proveSeconds": 2.1,
+      "totalSeconds": 31
     },
     {
       "label": "Borrower re-pledges invoice 1 to lender B",
       "circuit": "pledge",
       "outcome": "rejected before proving: Receivable already pledged",
-      "at": "2026-10-15T12:28:51.017Z"
+      "at": "2026-10-15T14:41:45.814Z"
     },
     {
       "label": "Lender A accepts invoice 1",
       "circuit": "acceptPledge",
-      "txId": "001f7136e01a6b6c1ab81901ea79750a47a87492dc1f14298fb16ce59d4cd79897",
-      "txHash": "55d65d52366ec66f11810f6c4c84911a547120df3dbc7d2ec5d685e711943fdf",
-      "blockHeight": 2991584,
+      "txId": "00bca3a26ae48b7ef0d8ae8835d1d6ad78ceefeaf29baddf32541a399f1a48f5a2",
+      "txHash": "7befa51fb27323b7911e2e9cb92f709bb636193e6cc9b40f52681b0091f3de19",
+      "blockHeight": 2992914,
       "outcome": "accepted",
-      "at": "2026-10-15T12:29:21.199Z",
-      "proveSeconds": 2.2,
-      "totalSeconds": 28.2
+      "at": "2026-10-15T14:42:21.056Z",
+      "proveSeconds": 4.1,
+      "totalSeconds": 30.5
     },
     {
       "label": "Borrower pledges invoice 2 to lender B",
       "circuit": "pledge",
-      "txId": "00be8070decace8ac4144ecc30be623def19093bb163c28eb18bc900d9d998dd1f",
-      "txHash": "376c53a7a4680f975ef612cae34f501b5895de5a40547fb27452b44af46d6be5",
-      "blockHeight": 2991589,
+      "txId": "00836597239d3fccf74d733302f113b090a0e5521a0ad445118598ac37cecfe901",
+      "txHash": "831702614f77706329fbce175498c8d12526c0a5793e3e5b8251382485c182fb",
+      "blockHeight": 2992919,
       "outcome": "accepted",
-      "at": "2026-10-15T12:29:50.128Z",
-      "proveSeconds": 1.8,
-      "totalSeconds": 28.5
+      "at": "2026-10-15T14:42:51.914Z",
+      "proveSeconds": 2.9,
+      "totalSeconds": 30.1
     },
     {
       "label": "Lender B declines invoice 2, freeing the receivable",
       "circuit": "declinePledge",
-      "txId": "003c3bce944c4c46d04c2078feaa3d4715c35f73a377d2ef3d8d609cb7e19d3e88",
-      "txHash": "a7b3ecff91b05aef406beb014de80edf7ded0a1783b08e67094a487ecfec5175",
-      "blockHeight": 2991595,
+      "txId": "009e671ffe835c5734273f285e4b7559b7f92a33476c763a9657457a8d039d4ccb",
+      "txHash": "c7231d87271b9ec0664e4c9d998ace017fee724e6626e87e1f78ef361eea12fa",
+      "blockHeight": 2992925,
       "outcome": "accepted",
-      "at": "2026-10-15T12:30:25.737Z",
-      "proveSeconds": 1.9,
-      "totalSeconds": 33.7
+      "at": "2026-10-15T14:43:26.828Z",
+      "proveSeconds": 3.4,
+      "totalSeconds": 32.6
     },
     {
       "label": "Borrower pledges the freed invoice 2 to lender A",
       "circuit": "pledge",
-      "txId": "00914195d9e7c134a1ac073e624b552245b75ddbfb5d19cf2c3dec8e945b9830e8",
-      "txHash": "edb90b824280d0654d5544a131f147a43459178bf0985b4bc9bed4fbc961c30d",
-      "blockHeight": 2991600,
+      "txId": "00c574a9d6a2e2cc11710177fc2b8f51cfca2d46a2564f3738c862db1d2c8b27b1",
+      "txHash": "21367023dfc9182b0f8fb22dcc9fc0f6c11da4d7bddaeb13b62480a550ee9c57",
+      "blockHeight": 2992930,
       "outcome": "accepted",
-      "at": "2026-10-15T12:30:57.287Z",
-      "proveSeconds": 1.8,
-      "totalSeconds": 31.1
+      "at": "2026-10-15T14:43:55.782Z",
+      "proveSeconds": 2.2,
+      "totalSeconds": 27.8
+    },
+    {
+      "label": "Borrower pledges invoice 3 to lender A",
+      "circuit": "pledge",
+      "txId": "00017d874990354890cf855f29ddc5d83a3af29e11ef5f3e5b72527fb6c16b636a",
+      "txHash": "5dbbae19224808d8c228f8c9195f3285d4dfab777247b93d7b1380d7c5f367aa",
+      "blockHeight": 2992935,
+      "outcome": "accepted",
+      "at": "2026-10-15T14:44:25.885Z",
+      "proveSeconds": 2.7,
+      "totalSeconds": 29.4
+    },
+    {
+      "label": "Borrower pledges invoice 4 to lender A",
+      "circuit": "pledge",
+      "txId": "00d9775b3a2cacbe6863385759b30549fdffc1caca7f552580884fbb55bb9405cc",
+      "txHash": "4fa78619f494555e7ed5e7df6ba7a619b224ee81f781ef694ab3fb1c6f3d51e0",
+      "blockHeight": 2992971,
+      "outcome": "accepted",
+      "at": "2026-10-15T14:48:05.036Z",
+      "proveSeconds": 2,
+      "totalSeconds": 35.4
+    },
+    {
+      "label": "Lender A proves a borrowing base of at least 31000000 grosz",
+      "circuit": "proveBorrowingBase",
+      "txId": "005b742c781480ee3328b88963e730de36ef9e3c6bf3910832c9bc39ee8164ffc6",
+      "txHash": "b86ff0e13376538b178ceab1859a68c5cab3e1bf20e1249b70047888ad295ffe",
+      "blockHeight": 2993004,
+      "outcome": "accepted",
+      "at": "2026-10-15T14:51:22.928Z",
+      "proveSeconds": 163.5,
+      "totalSeconds": 196.9
+    },
+    {
+      "label": "Lender A overstates its borrowing base",
+      "circuit": "proveBorrowingBase",
+      "outcome": "rejected before proving: Pool does not clear the floor",
+      "at": "2026-10-15T14:51:24.738Z"
     },
     {
       "label": "Lender A releases invoice 1",
       "circuit": "release",
-      "txId": "00919aa9a9a15a488da3a7124f2c9f5ba7844fa08af748cce1dca0335e9d4fa858",
-      "txHash": "7917e51555f917913427dcc4b6b8caeb011bc62b15acdc45ce89c3117a43f5f7",
-      "blockHeight": 2991605,
+      "txId": "007e2618b4e9ad78753c80aeead8e60d6f11c54aaf44e05f24e4f7ac7806af07da",
+      "txHash": "6edde6914ddbe4d019ac797d4fc5961f9191a9de96f51879971e3bc0ce0bbfbf",
+      "blockHeight": 2993034,
       "outcome": "accepted",
-      "at": "2026-10-15T12:31:26.645Z",
-      "proveSeconds": 2.2,
-      "totalSeconds": 28.7
+      "at": "2026-10-15T14:54:27.885Z",
+      "proveSeconds": 1.8,
+      "totalSeconds": 40.7
+    },
+    {
+      "label": "Registrar 1 approves the rotation",
+      "circuit": "approveRotate",
+      "txId": "003b65f98cf2922e586481311a14d9374dc9affa163e09124458cbe0e031a94c9d",
+      "txHash": "78570a229a538db9bbb6efd7abb30053e050fb2748bc8e4bea03ac1161d52a48",
+      "blockHeight": 2993041,
+      "outcome": "accepted",
+      "at": "2026-10-15T14:55:12.795Z",
+      "proveSeconds": 5.9,
+      "totalSeconds": 43.6
+    },
+    {
+      "label": "Registrar 2 approves the rotation",
+      "circuit": "approveRotate",
+      "txId": "00487124f6c58a9814a2b7e786ae259b83ca520e83af576dc9164d93847da9658a",
+      "txHash": "dd9455f1078cb1f73f7a14a1409c5ece11bd589119c290ba4a858e6611768a81",
+      "blockHeight": 2993048,
+      "outcome": "accepted",
+      "at": "2026-10-15T14:55:55.011Z",
+      "proveSeconds": 1.7,
+      "totalSeconds": 40.8
+    },
+    {
+      "label": "Committee rotates itself to a new epoch",
+      "circuit": "executeRotate",
+      "txId": "002f523d694c77ec3126e93e127b618031182fd0e51c5f0905782bd9376d6dfb0e",
+      "txHash": "c8a08008ea3272b15d636459555c95974ba2d2d6678808d82a4257009fe1befd",
+      "blockHeight": 2993057,
+      "outcome": "accepted",
+      "at": "2026-10-15T14:56:47.105Z",
+      "proveSeconds": 3.3,
+      "totalSeconds": 49.1
     }
   ]
 }

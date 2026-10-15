@@ -32,6 +32,13 @@ export type DemoBundle = {
     readonly key: Uint8Array;
     /** Where the borrower sends the encrypted opening; also on chain in lenderEncryptionKeys. */
     readonly encryptionKey: Uint8Array;
+    /**
+     * The demo lender's own party secret, published in the bundle on purpose and only because this is
+     * a testnet toy: /inbox has to decrypt deliveries in the visitor's browser, and a visitor who
+     * cannot be a lender cannot see the inbox work at all. Optional because bundles minted before the
+     * inbox existed do not carry it, and the page says so rather than throwing.
+     */
+    readonly secret?: Uint8Array;
   }[];
   readonly attestations: readonly DemoAttestation[];
 };
@@ -47,7 +54,7 @@ export const loadBundle = async (): Promise<DemoBundle> => {
     registryVersion: string;
     contractAddress: string;
     borrowerSecret: string;
-    lenders: { label: string; key: string; encryptionKey: string }[];
+    lenders: { label: string; key: string; encryptionKey: string; secret?: string }[];
     attestations: {
       fields: DemoInvoice;
       salt: string;
@@ -67,7 +74,12 @@ export const loadBundle = async (): Promise<DemoBundle> => {
     registryVersion: raw.registryVersion,
     contractAddress: raw.contractAddress,
     borrowerSecret: bytes(raw.borrowerSecret),
-    lenders: raw.lenders.map((l) => ({ label: l.label, key: bytes(l.key), encryptionKey: bytes(l.encryptionKey) })),
+    lenders: raw.lenders.map((l) => ({
+      label: l.label,
+      key: bytes(l.key),
+      encryptionKey: bytes(l.encryptionKey),
+      secret: l.secret === undefined ? undefined : bytes(l.secret),
+    })),
     attestations: raw.attestations.map((a) => ({
       fields: a.fields,
       attestation: {

@@ -804,21 +804,21 @@ export class Contract {
         if (!(typeof(contextOrig_0) === 'object' && contextOrig_0.currentQueryContext != undefined)) {
           __compactRuntime.typeError('proveBorrowingBase',
                                      'argument 1 (as invoked from Typescript)',
-                                     'registry.compact line 491 char 1',
+                                     'registry.compact line 499 char 1',
                                      'CircuitContext',
                                      contextOrig_0)
         }
         if (!(round_0.buffer instanceof ArrayBuffer && round_0.BYTES_PER_ELEMENT === 1 && round_0.length === 32)) {
           __compactRuntime.typeError('proveBorrowingBase',
                                      'argument 1 (argument 2 as invoked from Typescript)',
-                                     'registry.compact line 491 char 1',
+                                     'registry.compact line 499 char 1',
                                      'Bytes<32>',
                                      round_0)
         }
         if (!(typeof(floor_0) === 'bigint' && floor_0 >= 0n && floor_0 <= 340282366920938463463374607431768211455n)) {
           __compactRuntime.typeError('proveBorrowingBase',
                                      'argument 2 (argument 3 as invoked from Typescript)',
-                                     'registry.compact line 491 char 1',
+                                     'registry.compact line 499 char 1',
                                      'Uint<0..340282366920938463463374607431768211456>',
                                      floor_0)
         }
@@ -3409,7 +3409,7 @@ export class Contract {
                                                                                         { popeq: { cached: true,
                                                                                                    result: undefined } }]).value)),
                             'Unknown pool note');
-    return [note_0, item_0.amount];
+    return [item_0.tag, item_0.amount];
   }
   _proveBorrowingBase_0(context, partialProofData, round_0, floor_0) {
     const sk_0 = this._localSecretKey_0(context, partialProofData);
@@ -3421,40 +3421,40 @@ export class Contract {
                                                            lender_0,
                                                            pool_0[0],
                                                            paths_0[0]);
-    const note0_0 = __compact_pattern_tmp3_0[0];
+    const tag0_0 = __compact_pattern_tmp3_0[0];
     const amount0_0 = __compact_pattern_tmp3_0[1];
     const __compact_pattern_tmp4_0 = this._checkPoolItem_0(context,
                                                            partialProofData,
                                                            lender_0,
                                                            pool_0[1],
                                                            paths_0[1]);
-    const note1_0 = __compact_pattern_tmp4_0[0];
+    const tag1_0 = __compact_pattern_tmp4_0[0];
     const amount1_0 = __compact_pattern_tmp4_0[1];
     const __compact_pattern_tmp1_0 = this._checkPoolItem_0(context,
                                                            partialProofData,
                                                            lender_0,
                                                            pool_0[2],
                                                            paths_0[2]);
-    const note2_0 = __compact_pattern_tmp1_0[0];
+    const tag2_0 = __compact_pattern_tmp1_0[0];
     const amount2_0 = __compact_pattern_tmp1_0[1];
     const __compact_pattern_tmp2_0 = this._checkPoolItem_0(context,
                                                            partialProofData,
                                                            lender_0,
                                                            pool_0[3],
                                                            paths_0[3]);
-    const note3_0 = __compact_pattern_tmp2_0[0];
+    const tag3_0 = __compact_pattern_tmp2_0[0];
     const amount3_0 = __compact_pattern_tmp2_0[1];
-    __compactRuntime.assert(!this._equal_12(note0_0, note1_0)
+    __compactRuntime.assert(!this._equal_12(tag0_0, tag1_0)
                             &&
-                            !this._equal_13(note0_0, note2_0)
+                            !this._equal_13(tag0_0, tag2_0)
                             &&
-                            !this._equal_14(note0_0, note3_0),
+                            !this._equal_14(tag0_0, tag3_0),
                             'A receivable appears twice in the pool');
-    __compactRuntime.assert(!this._equal_15(note1_0, note2_0)
+    __compactRuntime.assert(!this._equal_15(tag1_0, tag2_0)
                             &&
-                            !this._equal_16(note1_0, note3_0)
+                            !this._equal_16(tag1_0, tag3_0)
                             &&
-                            !this._equal_17(note2_0, note3_0),
+                            !this._equal_17(tag2_0, tag3_0),
                             'A receivable appears twice in the pool');
     const total_0 = amount0_0 + amount1_0 + amount2_0 + amount3_0;
     let t_0;

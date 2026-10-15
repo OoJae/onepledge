@@ -43,6 +43,16 @@ export const ROUTES: RouteDef[] = [
     page: lazyPage(() => import('./pages/Desk.tsx').then((m) => m.default as ComponentType)),
   },
   {
+    path: '/inbox',
+    label: 'Inbox',
+    title: 'OnePledge · the lender inbox',
+    // The compiled contract is behind a dynamic import inside the page, so this chunk really is just
+    // the connector: the inbox has to be able to say "no wallet here" without 5 MB of WASM first.
+    fallback: 'Loading the wallet connector…',
+    nav: true,
+    page: lazyPage(() => import('./pages/Inbox.tsx').then((m) => m.default as ComponentType)),
+  },
+  {
     path: '/brand',
     label: 'Brand',
     title: 'OnePledge · brand',

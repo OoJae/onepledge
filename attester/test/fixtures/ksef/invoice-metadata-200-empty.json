@@ -1,0 +1,23 @@
+{
+  "provenance": {
+    "recorded": false,
+    "label": "HAND-AUTHORED. NOT A RECORDING.",
+    "note": "Written by hand from the published KSeF OpenAPI contract. No request was ever sent to api-test.ksef.mf.gov.pl, or to any other host, to produce this file. The field names and types come from the contract; every value is invented.",
+    "schema": "QueryInvoicesMetadataResponse",
+    "endpoint": "POST /invoices/query/metadata",
+    "contract": "https://github.com/CIRFMF/ksef-docs/blob/main/open-api.json",
+    "apiVersion": "2.9.0 (build 2.9.0-te)",
+    "authoredOn": "2026-10-15",
+    "invented": [
+      "An empty result page. KSeF answers a filter that matches nothing with 200 and an empty invoices array, not a 404, so the client has to distinguish 'no such invoice in this window' from 'KSeF refused the question'."
+    ]
+  },
+  "status": 200,
+  "contentType": "application/json",
+  "body": {
+    "hasMore": false,
+    "isTruncated": false,
+    "permanentStorageHwmDate": null,
+    "invoices": []
+  }
+}

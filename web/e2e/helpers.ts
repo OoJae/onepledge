@@ -10,7 +10,13 @@ export const routes = {
   live: hashMode ? '/#/live' : '/live',
 };
 
-export const brandRoutes = hashMode ? {} : { landing: '/', brand: '/brand', desk: '/desk' };
+/** The lender inbox. A constant of its own because brandRoutes collapses to {} in hash mode, and
+ *  inbox.spec.ts needs the path whichever mode it is about to skip in. */
+export const INBOX = '/inbox';
+
+// Routes that only ever existed as paths, so there is no legacy hash to test them under. Enrolled
+// here so the shared accessibility sweep in flows.spec.ts covers them without listing them twice.
+export const brandRoutes = hashMode ? {} : { landing: '/', brand: '/brand', desk: '/desk', inbox: INBOX };
 
 /** Collects CSP violations and console errors for the lifetime of the page. */
 export async function watchPage(page: Page) {

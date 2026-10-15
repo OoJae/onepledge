@@ -1,0 +1,47 @@
+{
+  "provenance": {
+    "recorded": false,
+    "label": "HAND-AUTHORED. NOT A RECORDING.",
+    "note": "Written by hand from the published KSeF OpenAPI contract. No request was ever sent to api-test.ksef.mf.gov.pl, or to any other host, to produce this file. The field names and types come from the contract; every value is invented.",
+    "schema": "QueryInvoicesMetadataResponse (invoices[] are InvoiceMetadata)",
+    "endpoint": "POST /invoices/query/metadata",
+    "contract": "https://github.com/CIRFMF/ksef-docs/blob/main/open-api.json",
+    "apiVersion": "2.9.0 (build 2.9.0-te)",
+    "authoredOn": "2026-10-15",
+    "invented": [
+      "ksefNumber: seller NIP 1111111112, which fails mod-11 on purpose. This is what a TEST-environment number looks like: the ministry tells integrators to use random NIPs there and performs no NIP checksum, so roughly ten in eleven are like this one. The CRC-8 is correct.",
+      "acquisitionDate: on the same UTC day (2026-03-01) as the date embedded in the number",
+      "invoiceHash: base64 SHA-256 of an ASCII marker string, not of any invoice XML"
+    ]
+  },
+  "status": 200,
+  "contentType": "application/json",
+  "body": {
+    "hasMore": false,
+    "isTruncated": false,
+    "permanentStorageHwmDate": null,
+    "invoices": [
+      {
+        "ksefNumber": "1111111112-20260301-0100001AF629-C8",
+        "invoiceNumber": "TEST/2026/03/0001",
+        "issueDate": "2026-02-28",
+        "invoicingDate": "2026-03-01T08:02:11.400Z",
+        "acquisitionDate": "2026-03-01T08:02:11.690Z",
+        "permanentStorageDate": "2026-03-01T08:19:55.212Z",
+        "seller": { "nip": "1111111112", "name": null },
+        "buyer": { "identifier": "7010002139", "name": null },
+        "netAmount": 4000.0,
+        "grossAmount": 4920.0,
+        "vatAmount": 920.0,
+        "currency": "PLN",
+        "invoicingMode": "Online",
+        "invoiceType": "Vat",
+        "formCode": { "systemCode": "FA (3)", "schemaVersion": "1-0E", "value": "FA" },
+        "isSelfInvoicing": false,
+        "hasAttachment": false,
+        "invoiceHash": "VxCvUuFUEDk7pOd3K9X24El7YOg2xt7YNrIVKa492D4=",
+        "hashOfCorrectedInvoice": null
+      }
+    ]
+  }
+}

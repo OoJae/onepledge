@@ -78,14 +78,56 @@ check('release count covers recorded releases', ledger.releaseCount >= BigInt(re
 const recordedDraws = record.events.filter((e) => e.circuit === 'proveBorrowingBase' && e.txHash).length;
 check('draw count covers recorded borrowing-base proofs', ledger.drawCount >= BigInt(recordedDraws), `chain ${ledger.drawCount}, recorded ${recordedDraws}`);
 
+// The upgrade (contract maintenance) authority: the keys allowed to insert or remove this
+// contract's verifier keys, or to replace the authority itself. A size-and-threshold match is not
+// enough -- a 2-of-3 whose three keys are not the three keys we think they are is a different
+// authority with the same shape. So when the record lists the committee's verifying keys, assert
+// the on-chain committee is exactly those keys in exactly that order: the index is what
+// `MaintenanceUpdate.addSignature` signs under, so order is part of the authority's identity.
 const authority = state.maintenanceAuthority;
 const recordedUpgrade = record.maintenanceAuthority;
+// `committee` is read defensively rather than declared: the DeploymentRecord type lives in
+// cli/src/providers.ts, which this change does not own. Written by cli/src/install-committee.ts.
+const recordedCommittee = (recordedUpgrade as { committee?: unknown } | undefined)?.committee;
+const recordedKeys =
+  Array.isArray(recordedCommittee) && recordedCommittee.every((k) => typeof k === 'string')
+    ? (recordedCommittee as string[])
+    : undefined;
+
 if (recordedUpgrade) {
+  const chainCommittee = [...authority.committee].map(String);
   check(
     'upgrade authority matches deployment record',
-    authority.committee.length === recordedUpgrade.committeeSize && Number(authority.threshold) === Number(recordedUpgrade.threshold),
-    `chain ${authority.committee.length}-of-${authority.threshold}, recorded ${recordedUpgrade.committeeSize}-of-${recordedUpgrade.threshold}`,
+    chainCommittee.length === recordedUpgrade.committeeSize && Number(authority.threshold) === Number(recordedUpgrade.threshold),
+    `chain ${chainCommittee.length}-of-${authority.threshold}, recorded ${recordedUpgrade.committeeSize}-of-${recordedUpgrade.threshold}`,
   );
+  if (recordedKeys) {
+    check(
+      'upgrade authority committee size matches the recorded key list',
+      chainCommittee.length === recordedKeys.length,
+      `chain ${chainCommittee.length} key(s), recorded ${recordedKeys.length}`,
+    );
+    for (const [i, expected] of recordedKeys.entries()) {
+      const actual = chainCommittee[i];
+      check(
+        `upgrade authority seat ${i} is the recorded key`,
+        actual === expected,
+        actual === expected ? `${expected.slice(0, 12)}` : `chain ${actual?.slice(0, 12) ?? '(absent)'}, recorded ${expected.slice(0, 12)}`,
+      );
+    }
+    // A key on chain that the record does not list is an authority member nobody wrote down.
+    check(
+      'upgrade authority has no committee seats beyond the recorded ones',
+      chainCommittee.length <= recordedKeys.length,
+      `chain seats ${chainCommittee.length}, recorded ${recordedKeys.length}`,
+    );
+  } else {
+    console.log(
+      'info  the deployment record does not list the upgrade committee\'s verifying keys, so only its ' +
+        'size and threshold are checked. Add maintenanceAuthority.committee (cli/src/install-committee.ts ' +
+        'prints it) to pin the exact keys.',
+    );
+  }
 } else {
   console.log(`info  upgrade authority: ${authority.committee.length}-member committee, threshold ${authority.threshold}`);
 }

@@ -1,0 +1,35 @@
+{
+  "provenance": {
+    "recorded": false,
+    "label": "HAND-AUTHORED. NOT A RECORDING.",
+    "note": "Written by hand from the published KSeF OpenAPI contract. No request was ever sent to api-test.ksef.mf.gov.pl, or to any other host, to produce this file. The field names and types come from the contract; every value is invented.",
+    "schema": "ExceptionResponse (exception.exceptionDetailList[] are ExceptionDetails) - marked deprecated: true in the 2.9.0 contract, and kept here because a deployment that still emits it must not read as a transport failure",
+    "endpoint": "POST /invoices/query/metadata, 400 response, application/json variant",
+    "contract": "https://github.com/CIRFMF/ksef-docs/blob/main/open-api.json",
+    "apiVersion": "2.9.0 (build 2.9.0-te)",
+    "authoredOn": "2026-10-15",
+    "invented": [
+      "exceptionCode: invented, for the same reason as ApiError.code in bad-request-problem-400.json",
+      "referenceNumber: 36 characters, as the ReferenceNumber schema requires",
+      "serviceCtx, serviceCode, serviceName: invented strings in the shape the fields suggest"
+    ]
+  },
+  "status": 400,
+  "contentType": "application/json",
+  "body": {
+    "exception": {
+      "serviceCtx": "KSeF-API",
+      "serviceCode": "20251015-EX-ABCDEF1234-5F6A7B8C9D",
+      "serviceName": "invoices.query.metadata",
+      "timestamp": "2026-10-15T09:17:44.120Z",
+      "referenceNumber": "20251015-SE-ABCDEF1234-5F6A7B8C9D-00",
+      "exceptionDetailList": [
+        {
+          "exceptionCode": 21152,
+          "exceptionDescription": "Podany numer KSeF nie zostal znaleziony.",
+          "details": null
+        }
+      ]
+    }
+  }
+}
