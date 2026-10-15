@@ -197,22 +197,47 @@ try {
   note('Borrower re-pledges invoice 1 to lender B', 'pledge', `rejected before proving: ${reason}`);
 }
 
-// 4. A different invoice to lender B goes through.
-const att2 = attestFor(invoice2, '8300000');
-await providers.privateStateProvider.set('borrower', {
-  secretKey: parties.borrower,
-  attestation: att2.attestation,
-  pledgeLender: lenderKey(parties.lenderB),
-  noteSalt: newSalt(),
-});
-const pledged2 = await submit('pledge', () => borrowerA.callTx.pledge(lenderKey(parties.lenderB)));
-note('Borrower pledges invoice 2 to lender B', 'pledge', 'accepted', pledged2.public);
-
-// 5. Lender A releases invoice 1 (paid).
+// 4. Lender A takes the pledge. Until this runs it is a one-sided claim by the borrower.
 const lenderA = await join('lenderA', {
   secretKey: parties.lenderA,
   releaseNote: { tag: att1.attestation.tag, invoiceCommit: att1.attestation.invoiceCommit, salt: noteSalt1 },
 });
+const accepted = await submit('acceptPledge', () => lenderA.callTx.acceptPledge());
+note('Lender A accepts invoice 1', 'acceptPledge', 'accepted', accepted.public);
+
+// 5. A different invoice to lender B goes through.
+const att2 = attestFor(invoice2, '8300000');
+const noteSalt2 = newSalt();
+await providers.privateStateProvider.set('borrower', {
+  secretKey: parties.borrower,
+  attestation: att2.attestation,
+  pledgeLender: lenderKey(parties.lenderB),
+  noteSalt: noteSalt2,
+});
+const pledged2 = await submit('pledge', () => borrowerA.callTx.pledge(lenderKey(parties.lenderB)));
+note('Borrower pledges invoice 2 to lender B', 'pledge', 'accepted', pledged2.public);
+
+// 6. Lender B refuses it, which frees the receivable. Before Wave 2 a pledge no lender agreed to
+//    burned the invoice forever (security review F10).
+const lenderB = await join('lenderB', {
+  secretKey: parties.lenderB,
+  releaseNote: { tag: att2.attestation.tag, invoiceCommit: att2.attestation.invoiceCommit, salt: noteSalt2 },
+});
+const declined = await submit('declinePledge', () => lenderB.callTx.declinePledge());
+note('Lender B declines invoice 2, freeing the receivable', 'declinePledge', 'accepted', declined.public);
+
+// 7. The freed invoice is financed elsewhere: the proof that declining really releases the tag.
+const att2again = attestFor(invoice2, '8300000');
+await providers.privateStateProvider.set('borrower', {
+  secretKey: parties.borrower,
+  attestation: att2again.attestation,
+  pledgeLender: lenderKey(parties.lenderA),
+  noteSalt: newSalt(),
+});
+const repledged = await submit('pledge', () => borrowerA.callTx.pledge(lenderKey(parties.lenderA)));
+note('Borrower pledges the freed invoice 2 to lender A', 'pledge', 'accepted', repledged.public);
+
+// 8. Lender A releases invoice 1 (paid).
 const released = await submit('release', () => lenderA.callTx.release());
 note('Lender A releases invoice 1', 'release', 'accepted', released.public);
 

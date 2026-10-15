@@ -71,7 +71,7 @@ if (archived) log(`Archived the previous record to ${archived}`);
 
 writeDeployment(network, {
   network: network.name,
-  version: 'v2',
+  version: process.env.REGISTRY_VERSION ?? 'v3',
   status: 'active',
   maintenanceAuthority: authorityInfo
     ? {

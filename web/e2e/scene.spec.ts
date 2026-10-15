@@ -45,6 +45,10 @@ test('reduced motion shows the illustrated beats with no canvas', async ({ brows
 
 test('leaving and returning to the landing releases the scene', async ({ page, isMobile }) => {
   test.skip(isMobile, 'desktop loads the 3D scene eagerly');
+  // canRender3d() probes WebGL2 with failIfMajorPerformanceCaveat, which a GPU-less CI runner fails,
+  // so data-ready never reaches "3d" and four 30s waits blow the 90s test timeout. The point of this
+  // test is WebGL context reuse, which cannot be observed without a GPU.
+  test.skip(!process.env.HAS_GPU, 'needs a real GPU; set HAS_GPU=1 to run');
   const problems = await watchPage(page);
   const warnings: string[] = [];
   page.on('console', (m) => /WebGL|context/i.test(m.text()) && warnings.push(m.text()));
