@@ -15,6 +15,8 @@ import {
 } from '../wallet/connector.ts';
 import { DEFAULT_PROOF_SERVER, proofServerReachable, provingMode } from '../wallet/providers.ts';
 import { loadBundle, sendPledge, type DemoBundle, type PledgeResult } from '../wallet/pledge.ts';
+// The deployed version, read from the record rather than written in prose: it was already stale once.
+import deployment from '../../../deployments/preprod.json';
 
 type Wallet = {
   shielded: string;
@@ -181,7 +183,7 @@ export default function Desk() {
               <p className="role">Everything below is checked live</p>
               <ul className="seen">
                 <li>
-                  <span className="yes">Network</span> your wallet is on {EXPECTED_NETWORK}, where registry v2 is deployed
+                  <span className="yes">Network</span> your wallet is on {EXPECTED_NETWORK}, where registry {deployment.version} is deployed
                 </li>
                 <li>
                   <span className={wallet.proving === 'wallet' ? 'yes' : 'no'}>Proving</span>{' '}
