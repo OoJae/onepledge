@@ -59,7 +59,7 @@ Found during the v2 redeploy. The CLI saved wallet state right after submitting 
 
 | Id | Limitation | Plan |
 |---|---|---|
-| F10 | A borrower with a valid attestation can pledge to any admitted lender without that lender's consent, permanently using up the tag; there is no void path. | Wave 2: lender acceptance (pledge then accept-with-timeout) and a time-locked registrar-and-authority void path. |
+| F10 | A borrower with a valid attestation can pledge to any admitted lender without that lender's consent, permanently using up the tag; there is no void path. | **Fixed in Wave 2 (registry v3).** `acceptPledge` and `declinePledge`: the lender of record decides, proving it is the lender the same way `release` does. Declining removes the tag, so the receivable can be financed elsewhere. Still open: there is no deadline, so an undecided pledge holds the tag until the lender acts. |
 | F31, F27 | A stolen tag-authority signing key allows forged attestations; keys are stored as local files. | Wave 2: split signing and HMAC keys into a KMS, add a registrar pause. Wave 3: threshold tags, so no single key signs. |
 | F09 | The deployer holds a 1-of-1 contract maintenance key that can replace verifier keys. Recorded in `deployments/preprod.json`. | Wave 2: 2-of-3 committee. Wave 3: freeze a v1.0 deployment. |
 | F24 | Pledges and releases disclose the Merkle root they used; a stale root narrows timing. | Honest clients use the current root; Wave 2 asserts it. |

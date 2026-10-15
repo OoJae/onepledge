@@ -1,4 +1,4 @@
-# Threat model (registry v2, Wave 1)
+# Threat model (registry v3, Wave 2)
 
 ## What we protect
 
@@ -35,8 +35,9 @@
 5. **Curious tag authority.** It computes tags itself, so it can tell whether and when an invoice it attested was pledged, and it saw the borrower key and invoice commitment it signed. It does not learn the lender or the terms.
 6. **Malicious prover.** Supplies forged witnesses: challenge reductions, Merkle paths, note openings. Every value is constrained in-circuit. Tests replace honest witnesses with malicious ones.
 
-## Out of scope for Wave 1
+## Out of scope for Wave 2
 
+- An undecided pledge. A lender that never accepts or declines leaves the receivable encumbered; there is no deadline yet, so a borrower still depends on the lender acting.
 - A dishonest or compromised tag authority. It could sign a second tag for one invoice or sign invoices that do not exist. This is mitigated by threshold tags in Wave 3.
 - Fabricated invoices. The authority attests existence via KSeF; OnePledge does not judge truth.
 - Network-level linkage (RPC/indexer visibility, timing). Use your own node and indexer where it matters.
@@ -54,6 +55,10 @@
 | `pledge` | registry address, tag-authority key, window | Public ledger reads |
 | `release` | nullifier | Prevents a second release; unlinkable to the note |
 | `release` | notes-tree root used | Same as above |
+| `acceptPledge` | decision nullifier | Records that the lender of record decided; unlinkable to the note and to the lender |
+| `acceptPledge` | notes-tree root used | The chain must check it is a real (historic) root |
+| `declinePledge` | decision nullifier, notes-tree root | As above |
+| `declinePledge` | tag | The receivable has to become visibly free again. The tag was already published by `pledge`, so this adds no new fact about the invoice; it only says this pledge was refused. `acceptPledge` does **not** publish it, so accepting never says which receivable was accepted. |
 | `admitLender` | the admitted lender key; the registrar key (public ledger read) | Lenders are a public, admitted set |
 | `rotateRegistrar` | the next registrar key; the current registrar key (public ledger read) | Public role |
 
