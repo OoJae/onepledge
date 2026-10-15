@@ -196,7 +196,7 @@ deployments/  Public record of deployments (active and archived)
 
 Old `/#/`, `/#/attack` and `/#/live` links still work.
 
-![The walkthrough: the second pledge of the same invoice is refused, and each party sees only its share](docs/img/walkthrough.png)
+![The walkthrough: the second pledge is refused, Lender A declines, and the freed invoice is financed by Lender B, which never learns who refused it](docs/img/walkthrough.png)
 
 The walkthrough runs the compiled circuits against an in-memory ledger: no proofs, no transactions. The Preprod transactions come from the CLI.
 

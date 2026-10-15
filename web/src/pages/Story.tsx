@@ -131,7 +131,13 @@ export function Story() {
       <section className="columns">
         <article className="card column">
           <h2>Lender A</h2>
-          <p className="role">Financed the invoice</p>
+          <p className="role">
+            {step === 'declined' || step === 'repledged'
+              ? 'Refused the pledge'
+              : step === 'start'
+                ? 'The lender the borrower approaches'
+                : 'Holds the pledge'}
+          </p>
           {pledged ? (
             <ul className="seen">
               <li><span className="yes">Sees</span> the full invoice: {pln(run.invoice.amountGrosz)}, due {run.invoice.dueDate}</li>
@@ -145,11 +151,25 @@ export function Story() {
 
         <article className="card column">
           <h2>Lender B</h2>
-          <p className="role">Asked to finance the same invoice</p>
-          {step === 'doubled' || step === 'released' ? (
+          <p className="role">
+            {step === 'repledged' ? 'Financed the invoice after Lender A refused' : 'Asked to finance the same invoice'}
+          </p>
+          {step === 'repledged' ? (
+            <ul className="seen">
+              <li>
+                <span className="yes">Sees</span> the full invoice, because the borrower came to it once
+                Lender A had let the receivable go
+              </li>
+              <li>
+                <span className="yes">Knows</span> the receivable was free when it pledged: the registry
+                refused it minutes earlier and accepted it now
+              </li>
+              <li><span className="no">Never sees</span> that Lender A was the one who refused, or on what terms</li>
+            </ul>
+          ) : step === 'doubled' || step === 'accepted' || step === 'released' || step === 'declined' ? (
             <ul className="seen">
               <li><span className="yes">Learns</span> one fact: this invoice is <strong>already pledged</strong>. The borrower's circuit refused before any proof was made.</li>
-              <li><span className="yes">Can check</span> before funding: verify the attestation, then look its tag up in the public set on its own machine. Status: {run.encumbered() ? (step === 'released' ? 'pledged (tags are permanent)' : 'encumbered') : 'free'}</li>
+              <li><span className="yes">Can check</span> before funding: verify the attestation, then look its tag up in the public set on its own machine. Status: {run.encumbered() ? (step === 'released' ? 'pledged (an accepted pledge keeps the tag)' : 'encumbered') : 'free again, because Lender A declined'}</li>
               <li><span className="no">Never sees</span> which lender, how much, or the terms</li>
             </ul>
           ) : (
