@@ -14,6 +14,7 @@ import {
   type WalletChoice,
 } from '../wallet/connector.ts';
 import { DEFAULT_PROOF_SERVER, proofServerReachable, provingMode } from '../wallet/providers.ts';
+import { loadBundle, sendPledge, type DemoBundle, type PledgeResult } from '../wallet/pledge.ts';
 
 type Wallet = {
   shielded: string;
@@ -32,6 +33,11 @@ export default function Desk() {
   const [scanning, setScanning] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [wallet, setWallet] = useState<Wallet | null>(null);
+  const [bundle, setBundle] = useState<DemoBundle | null>(null);
+  const [choice, setChoice] = useState(0);
+  const [lender, setLender] = useState(0);
+  const [pledging, setPledging] = useState(false);
+  const [result, setResult] = useState<PledgeResult | null>(null);
   const connection = useRef<Connection | null>(null);
 
   // Poll for injection on mount. Doing this inside the click handler would spend the page's transient
@@ -74,6 +80,7 @@ export default function Desk() {
         proving: mode,
         proofServer: mode === 'proof-server' ? { uri, reachable: await proofServerReachable(uri) } : null,
       });
+      setBundle(await loadBundle().catch(() => null));
     } catch (e) {
       setError(describeError(e));
     } finally {
@@ -82,6 +89,24 @@ export default function Desk() {
   }, []);
 
   const ready = wallet !== null && wallet.dust.balance > 0n && (wallet.proving === 'wallet' || wallet.proofServer?.reachable === true);
+
+  const onPledge = useCallback(async () => {
+    if (!connection.current || !bundle) return;
+    setPledging(true);
+    setError(null);
+    try {
+      setResult(await sendPledge(connection.current, bundle, bundle.attestations[choice], bundle.lenders[lender].key));
+    } catch (e) {
+      const message = describeError(e);
+      setError(
+        /already pledged/i.test(message)
+          ? 'That receivable has already been pledged on this registry. Every attestation is single-use: pick another invoice.'
+          : message,
+      );
+    } finally {
+      setPledging(false);
+    }
+  }, [bundle, choice, lender]);
 
   return (
     <>
@@ -182,14 +207,79 @@ export default function Desk() {
             </article>
           </section>
 
-          <p className="notice">
-            <span className="notice-dot" aria-hidden />
-            <span>
-              {ready
-                ? 'This wallet can send a pledge. The pledge action lands with registry v3, which adds lender acceptance.'
-                : 'Signing is held back until every check above passes, so a pledge fails here rather than halfway through a transaction.'}
-            </span>
-          </p>
+          {!ready && (
+            <p className="notice">
+              <span className="notice-dot" aria-hidden />
+              <span>
+                Signing is held back until every check above passes, so a pledge fails here rather than
+                halfway through a transaction.
+              </span>
+            </p>
+          )}
+
+          {ready && bundle !== null && result === null && (
+            <section className="card">
+              <h2>Pledge a receivable</h2>
+              <p className="role">
+                Registry {bundle.registryVersion} on Preprod · {bundle.attestations.length} attestations available
+              </p>
+              <div className="field">
+                <label htmlFor="invoice">Invoice</label>
+                <select id="invoice" value={choice} onChange={(e) => setChoice(Number(e.target.value))}>
+                  {bundle.attestations.map((a, i) => (
+                    <option key={a.fields.ksefNumber} value={i}>
+                      {a.fields.ksefNumber} · {(Number(a.fields.amountGrosz) / 100).toLocaleString('pl-PL')} zł
+                    </option>
+                  ))}
+                </select>
+              </div>
+              <div className="field">
+                <label htmlFor="lender">Pledge to</label>
+                <select id="lender" value={lender} onChange={(e) => setLender(Number(e.target.value))}>
+                  {bundle.lenders.map((l, i) => (
+                    <option key={l.label} value={i}>{l.label}</option>
+                  ))}
+                </select>
+              </div>
+              <section className="actions">
+                <button onClick={() => void onPledge()} aria-busy={pledging} aria-disabled={pledging}>
+                  {pledging ? 'Proving and submitting…' : 'Pledge on Preprod'}
+                </button>
+              </section>
+              <p className="muted small">
+                The tag authority signed these offline, which is how a borrower receives one in the real
+                flow. Each is single-use: pledging burns its tag and the registry refuses it afterwards.
+                Synthetic KSeF numbers, testnet only.
+              </p>
+            </section>
+          )}
+
+          {result !== null && (
+            <section className="card">
+              <h2>Pledged on Midnight Preprod</h2>
+              <p className="role">The registry will now refuse this receivable to every other lender</p>
+              <dl className="facts stacked">
+                <div>
+                  <dt>Transaction</dt>
+                  <dd className="mono">
+                    <a
+                      href={`https://preprod.midnightexplorer.com/transactions/${result.txHash}`}
+                      rel="noreferrer noopener"
+                      target="_blank"
+                    >
+                      {result.txHash.slice(0, 16)}…
+                    </a>
+                  </dd>
+                </div>
+                <div><dt>Block</dt><dd className="mono">{result.blockHeight}</dd></div>
+                <div><dt>Note commitment</dt><dd className="mono">{result.note.slice(0, 16)}…</dd></div>
+              </dl>
+              <section className="actions">
+                <button className="ghost" onClick={() => setResult(null)}>Pledge another</button>
+                <a className="button button-ghost" href="/live">See it on the live registry</a>
+              </section>
+            </section>
+          )}
         </>
       )}
     </>
