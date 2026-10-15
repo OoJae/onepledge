@@ -163,10 +163,13 @@ Compact toolchain **0.31.1** (language 0.23), the version Preprod runs. 4 provab
 | `rotateRegistrar(next)` | Registrar | Same, then hands the role over. |
 | `pledge(lender)` | Borrower | The attestation is bound to the caller's key; the tag authority (not the identity point) signed the digest of the exact body for this registry; the attestation has not expired; the acceptance day is inside the window; the lender is admitted; the tag is new. |
 | `release()` | Lender of record | The caller's key is inside a note on the ledger; the nullifier is new. |
+| `acceptPledge()` | Lender of record | Same proof of record as `release`; the lender has not already decided on this note. |
+| `declinePledge()` | Lender of record | Same, and then removes the tag, so the receivable can be pledged again. |
 
 - **Identity:** never uses `ownPublicKey()`. Every role key is a domain-separated hash of a witness secret.
 - **Signatures:** public networks do not ship `jubjubSchnorrVerify` yet (toolchain 0.32+, ledger 9), so the Schnorr polyfill from [midnightntwrk/example-zkloan](https://github.com/midnightntwrk/example-zkloan) is used, including its bounded-quotient challenge reduction. The signer computes the message and challenge with the contract's own compiled pure circuits.
-- **Proving keys:** `pledge` 10.5 MB, `release` 9.5 MB, `admitLender` and `rotateRegistrar` 2.7 MB each.
+- **Decisions:** a lender records accept or decline as a domain-separated nullifier, unlinkable to the note and to the lender. Which set it lands in is public, because a declined receivable has to become visibly free again; the tag is disclosed only by `declinePledge`, so accepting never says which receivable was accepted.
+- **Proving keys:** `pledge` 10.5 MB, `release`, `acceptPledge` and `declinePledge` about 10 MB each, `admitLender` and `rotateRegistrar` 2.7 MB each.
 
 ## Repository layout
 
@@ -262,10 +265,10 @@ ONEPLEDGE_NETWORK=undeployed npm run demo --workspace cli
 
 - **Single tag authority.** Uniqueness relies on the authority tagging each invoice once and keeping its keys safe. A stolen signing key allows forged attestations; a leaked HMAC key lets the holder compute tags for known invoice numbers. Wave 3 replaces it with a verifiable threshold tag.
 - **The authority attests existence, not truth.** OnePledge stops the same invoice being financed twice; it does not stop a fabricated invoice.
-- **No lender consent yet.** A borrower with a valid attestation can pledge to any admitted lender, which permanently uses the tag. Lender acceptance and a void path are Wave 2.
+- **Lender consent is in, as of Wave 2.** A borrower can still pledge to any admitted lender, but the lender decides: accepting keeps the tag, declining removes it so the receivable can be financed elsewhere. What is still missing is a deadline — an undecided pledge holds the tag until the lender acts.
 - **Invoices outside KSeF.** In 2026 some small sellers may still invoice outside KSeF. Lenders should require a KSeF number as a funding condition.
 - **Corrections.** A correction invoice has its own KSeF number; the attester must tag it by the root invoice.
-- **Tags are permanent.** A released pledge does not free the invoice, and anyone holding a tag can watch its status.
+- **Tags are permanent once accepted.** A released pledge does not free the invoice, and anyone holding a tag can watch its status. Only a declined pledge frees it.
 - **Metadata.** DUST fee spends are shielded and do not link parties. What does link activity is network-level: one client submitting several transactions to a shared RPC node, indexer subscriptions, and timing. The CLI demo runs all parties from one machine.
 - **Synthetic KSeF numbers** until the Wave 2 test-environment adapter.
 - **Upgrade key.** A 1-of-1 deployer maintenance key (see Midnight integration).
