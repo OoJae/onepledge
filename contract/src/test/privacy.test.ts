@@ -178,6 +178,11 @@ describe('allowlist: a transcript publishes only what the design intends', () =>
     const values = transcriptValues(w.sim.lastResult!.proofData.publicTranscript);
     const extra = unexpectedValues(values, [
       inv.attestation.tag,
+      // The raw note commitment is now also a map key, because the delivery is stored under it so the
+      // lender of record can find its own. It is a hiding commitment over tag, lender, invoice
+      // commitment, amount and salt, and the Merkle leaf already committed to it, so this publishes
+      // no fact that was not already public.
+      note,
       ...merkleLeaf(note),
       before.lenders.root().field,
       w.sim.addressBytes(),

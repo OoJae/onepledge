@@ -6,6 +6,7 @@
 // refuses it forever after. See cli/src/mint-demo-attestations.ts.
 import { findDeployedContract } from '@midnight-ntwrk/midnight-js-contracts';
 import { Registry, type Attestation, type OnePledgePrivateState } from '@onepledge/contract';
+import { sealOpening } from '@onepledge/attester';
 import type { Connection } from './connector.ts';
 import { buildProviders, deskContract } from './providers.ts';
 
@@ -26,7 +27,12 @@ export type DemoBundle = {
   readonly registryVersion: string;
   readonly contractAddress: string;
   readonly borrowerSecret: Uint8Array;
-  readonly lenders: readonly { readonly label: string; readonly key: Uint8Array }[];
+  readonly lenders: readonly {
+    readonly label: string;
+    readonly key: Uint8Array;
+    /** Where the borrower sends the encrypted opening; also on chain in lenderEncryptionKeys. */
+    readonly encryptionKey: Uint8Array;
+  }[];
   readonly attestations: readonly DemoAttestation[];
 };
 
@@ -41,7 +47,7 @@ export const loadBundle = async (): Promise<DemoBundle> => {
     registryVersion: string;
     contractAddress: string;
     borrowerSecret: string;
-    lenders: { label: string; key: string }[];
+    lenders: { label: string; key: string; encryptionKey: string }[];
     attestations: {
       fields: DemoInvoice;
       salt: string;
@@ -61,7 +67,7 @@ export const loadBundle = async (): Promise<DemoBundle> => {
     registryVersion: raw.registryVersion,
     contractAddress: raw.contractAddress,
     borrowerSecret: bytes(raw.borrowerSecret),
-    lenders: raw.lenders.map((l) => ({ label: l.label, key: bytes(l.key) })),
+    lenders: raw.lenders.map((l) => ({ label: l.label, key: bytes(l.key), encryptionKey: bytes(l.encryptionKey) })),
     attestations: raw.attestations.map((a) => ({
       fields: a.fields,
       attestation: {
@@ -100,8 +106,9 @@ export const sendPledge = async (
   connection: Connection,
   bundle: DemoBundle,
   chosen: DemoAttestation,
-  lenderKey: Uint8Array,
+  lender: DemoBundle['lenders'][number],
 ): Promise<PledgeResult> => {
+  const lenderKey = lender.key;
   const providers = await buildProviders(connection);
   const noteSalt = crypto.getRandomValues(new Uint8Array(32));
 
@@ -116,6 +123,14 @@ export const sendPledge = async (
   await providers.privateStateProvider.set('borrower', initialPrivateState);
 
   // Same shape the CLI uses (cli/src/demo.ts): the generated contract type is not expressible here.
+  // The lender cannot find this pledge on chain without the opening: the note is an opaque hash.
+  const delivery = sealOpening(lender.encryptionKey, {
+    tag: chosen.attestation.tag,
+    invoiceCommit: chosen.attestation.invoiceCommit,
+    amount: chosen.attestation.amount,
+    salt: noteSalt,
+  });
+
   const contract = (await findDeployedContract(providers, {
     contractAddress: bundle.contractAddress,
     compiledContract: deskContract(),
@@ -125,7 +140,7 @@ export const sendPledge = async (
     callTx: Record<string, (...args: unknown[]) => Promise<{ public: { txHash: string; blockHeight: number } }>>;
   };
 
-  const tx = await contract.callTx.pledge(lenderKey);
+  const tx = await contract.callTx.pledge(lenderKey, delivery);
   return {
     txHash: tx.public.txHash,
     blockHeight: tx.public.blockHeight,

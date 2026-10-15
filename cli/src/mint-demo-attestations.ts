@@ -16,14 +16,15 @@ import fs from 'node:fs';
 import path from 'node:path';
 import { randomBytes } from 'node:crypto';
 import {
-  type InvoiceFields,
   addressBytes,
   attest,
   invoiceCommitment,
+  lenderEncryptionKey,
   newSalt,
   parseKsefNumber,
   receivableTag,
   syntheticKsefNumber,
+  type InvoiceFields,
 } from '@onepledge/attester';
 import { Registry } from '@onepledge/contract';
 import { repoRoot, selectNetwork } from './config.js';
@@ -99,8 +100,8 @@ const bundle = {
   // Public key commitments of the lenders the registrar admitted. Only the commitment is public;
   // the pledge still proves membership against a historic root without naming which lender it is.
   lenders: [
-    { label: 'Lender A', key: hex(Registry.pureCircuits.lenderKey(parties.lenderA)) },
-    { label: 'Lender B', key: hex(Registry.pureCircuits.lenderKey(parties.lenderB)) },
+    { label: 'Lender A', key: hex(Registry.pureCircuits.lenderKey(parties.lenderA)), encryptionKey: hex(lenderEncryptionKey(parties.lenderA)) },
+    { label: 'Lender B', key: hex(Registry.pureCircuits.lenderKey(parties.lenderB)), encryptionKey: hex(lenderEncryptionKey(parties.lenderB)) },
   ],
   attestations: Array.from({ length: COUNT }, (_, i) => mint(i)),
 };

@@ -67,6 +67,13 @@ export sealed ledger windowEnd: Uint<32>;
 
 // Admitted lenders, as commitments. A pledge proves membership without revealing which one.
 export ledger lenders: HistoricMerkleTree<10, Bytes<32>>;
+// Each admitted lender's shielded encryption public key, so a borrower can encrypt the note opening
+// to the lender it is pledging to. Admitted lenders are already a public set, so this adds nothing.
+export ledger lenderEncryptionKeys: Map<Bytes<32>, Bytes<32>>;
+// Encrypted note openings, keyed by the note commitment the pledge published. A lender finds its own
+// by trying to decrypt each, the way shielded protocols do, so the ciphertext carries no recipient
+// hint and the map never says which lender a delivery is for.
+export ledger deliveries: Map<Bytes<32>, Opaque<"Uint8Array">>;
 // Every tag ever pledged. Tags are never removed: a released pledge stays "used".
 export ledger tags: Set<Bytes<32>>;
 // Pledge notes: commit to (tag, lender, invoice commitment, salt).
@@ -172,9 +179,10 @@ export pure circuit schnorrChallenge(ann_x: Field, ann_y: Field, pk_x: Field, pk
 }
 
 // Registrar admits a lender by its key commitment (lenderKey(lenderSecret)).
-export circuit admitLender(lender: Bytes<32>): [] {
+export circuit admitLender(lender: Bytes<32>, encryptionKey: Bytes<32>): [] {
   assert(registrar == registrarKey(localSecretKey()), "Only the registrar can admit lenders");
   lenders.insert(disclose(lender));
+  lenderEncryptionKeys.insert(disclose(lender), disclose(encryptionKey));
 }
 
 export circuit rotateRegistrar(next: Bytes<32>): [] {
@@ -185,7 +193,11 @@ export circuit rotateRegistrar(next: Bytes<32>): [] {
 // Borrower pledges an attested receivable to an admitted lender.
 // Runs with the borrower's secret, the attestation, and the lender's public key (the registry
 // path is read from the public lender tree). Returns the note commitment.
-export circuit pledge(lender: Bytes<32>): Bytes<32> {
+// `delivery` is the note opening encrypted to the lender's encryption key, built off-chain. The
+// circuit cannot constrain an opaque value, so a borrower could post garbage; the lender decrypts,
+// recomputes the note commitment, sees it does not match, and declines. That is what the void path
+// is for, so nothing new is needed to handle it.
+export circuit pledge(lender: Bytes<32>, delivery: Opaque<"Uint8Array">): Bytes<32> {
   const att = getAttestation();
 
   // 1. The attestation belongs to this borrower (anti-front-running).
@@ -220,6 +232,7 @@ export circuit pledge(lender: Bytes<32>): Bytes<32> {
   // 7. Record a note only the lender of record can later release.
   const note = disclose(noteCommitment(att.tag, lender, att.invoiceCommit, att.amount, getNoteSalt()));
   notes.insert(note);
+  deliveries.insert(note, disclose(delivery));
   pledgeCount.increment(1);
   return note;
 }

@@ -2,18 +2,7 @@
 // Test parties and attested invoices. The attester package is exercised as the real signer.
 
 import { randomBytes } from 'node:crypto';
-import {
-  attest,
-  dayFromIso,
-  invoiceCommitment,
-  newSalt,
-  parseKsefNumber,
-  publicKeyOf,
-  randomScalar,
-  receivableTag,
-  syntheticKsefNumber,
-  type InvoiceFields,
-} from '@onepledge/attester';
+import { attest, dayFromIso, invoiceCommitment, lenderEncryptionKey, newSalt, parseKsefNumber, publicKeyOf, randomScalar, receivableTag, sealOpening, syntheticKsefNumber, type InvoiceFields } from '@onepledge/attester';
 import { sampleContractAddress } from '@midnight-ntwrk/compact-runtime';
 import { pureCircuits } from '../managed/registry/contract/index.js';
 import { type Attestation, type OnePledgePrivateState } from '../witnesses.js';
@@ -101,8 +90,8 @@ export const newWorld = (overrides: ConstructorParameters<typeof RegistrySimulat
   const lenderA = secret();
   const lenderB = secret();
   sim.as({ secretKey: registrar });
-  sim.admitLender(pureCircuits.lenderKey(lenderA));
-  sim.admitLender(pureCircuits.lenderKey(lenderB));
+  sim.admitLender(pureCircuits.lenderKey(lenderA), lenderEncryptionKey(lenderA));
+  sim.admitLender(pureCircuits.lenderKey(lenderB), lenderEncryptionKey(lenderB));
   return { sim, authority, registrar, lenderA, lenderB, borrower: secret() };
 };
 
@@ -119,10 +108,26 @@ export const borrowerState = (
   noteSalt,
 });
 
-export const pledgeAs = (w: World, invoice: AttestedInvoice, lenderSecret: Uint8Array, borrowerSecret = w.borrower) => {
+export const pledgeAs = (
+  w: World,
+  invoice: AttestedInvoice,
+  lenderSecret: Uint8Array,
+  borrowerSecret = w.borrower,
+  /** Seal the opening to the lender, as a real borrower would. Off by default: most tests are about
+   *  the circuit's checks, not delivery, and an empty payload keeps them readable. */
+  deliver = false,
+) => {
   const noteSalt = secret();
   w.sim.as(borrowerState(borrowerSecret, invoice, lenderSecret, noteSalt));
-  const note = w.sim.pledge(pureCircuits.lenderKey(lenderSecret));
+  const delivery = deliver
+    ? sealOpening(lenderEncryptionKey(lenderSecret), {
+        tag: invoice.attestation.tag,
+        invoiceCommit: invoice.attestation.invoiceCommit,
+        amount: invoice.attestation.amount,
+        salt: noteSalt,
+      })
+    : new Uint8Array();
+  const note = w.sim.pledge(pureCircuits.lenderKey(lenderSecret), delivery);
   return { note, noteSalt };
 };
 

@@ -97,7 +97,7 @@ export default function Desk() {
     setPledging(true);
     setError(null);
     try {
-      setResult(await sendPledge(connection.current, bundle, bundle.attestations[choice], bundle.lenders[lender].key));
+      setResult(await sendPledge(connection.current, bundle, bundle.attestations[choice], bundle.lenders[lender]));
     } catch (e) {
       const message = describeError(e);
       setError(

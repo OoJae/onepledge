@@ -5,14 +5,16 @@
 import {
   attest,
   invoiceCommitment,
+  lenderEncryptionKey,
   newSalt,
   parseKsefNumber,
   publicKeyOf,
   randomScalar,
   receivableTag,
+  sealOpening,
   syntheticKsefNumber,
-  verifyInvoiceOpening,
   type InvoiceFields,
+  verifyInvoiceOpening,
 } from '@onepledge/attester';
 import { Registry, RegistrySimulator, type Attestation } from '@onepledge/contract';
 import { bytesToHex, randomBytes } from '@noble/hashes/utils.js';
@@ -53,8 +55,8 @@ export class Walkthrough {
   constructor() {
     this.sim = new RegistrySimulator(this.registrar, publicKeyOf(this.authority.sk), day('2026-07-01'), day('2027-01-01'));
     this.sim.as({ secretKey: this.registrar });
-    this.sim.admitLender(Registry.pureCircuits.lenderKey(this.lenderA));
-    this.sim.admitLender(Registry.pureCircuits.lenderKey(this.lenderB));
+    this.sim.admitLender(Registry.pureCircuits.lenderKey(this.lenderA), lenderEncryptionKey(this.lenderA));
+    this.sim.admitLender(Registry.pureCircuits.lenderKey(this.lenderB), lenderEncryptionKey(this.lenderB));
 
     const ksef = syntheticKsefNumber('5265877635', '2026-09-10', hex(randomBytes(6)).toUpperCase());
     const parsed = parseKsefNumber(ksef);
@@ -105,7 +107,16 @@ export class Walkthrough {
       noteSalt: this.noteSalt,
     });
     return this.attempt(
-      () => this.sim.pledge(Registry.pureCircuits.lenderKey(lenderSecret)),
+      () =>
+        this.sim.pledge(
+          Registry.pureCircuits.lenderKey(lenderSecret),
+          sealOpening(lenderEncryptionKey(lenderSecret), {
+            tag: attestation.tag,
+            invoiceCommit: attestation.invoiceCommit,
+            amount: attestation.amount,
+            salt: this.noteSalt,
+          }),
+        ),
       `Pledged to lender ${lender}`,
     );
   }

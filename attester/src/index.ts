@@ -2,3 +2,4 @@
 export * from './ksef.js';
 export * from './tag.js';
 export * from './signing.js';
+export * from './delivery.js';

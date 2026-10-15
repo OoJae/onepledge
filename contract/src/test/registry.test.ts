@@ -4,7 +4,14 @@
 // makes it fire.
 
 import { describe, expect, it } from 'vitest';
-import { publicKeyOf, randomScalar, sign, dayFromIso } from '@onepledge/attester';
+import {
+  dayFromIso,
+  lenderEncryptionKey,
+  openDelivery,
+  publicKeyOf,
+  randomScalar,
+  sign,
+} from '@onepledge/attester';
 import { pureCircuits } from '../managed/registry/contract/index.js';
 import { type Attestation } from '../witnesses.js';
 import { RegistrySimulator } from '../simulator.js';
@@ -419,6 +426,79 @@ describe('release', () => {
     };
     sim.as(lenderReleaseState(w.lenderA, inv, noteSalt));
     expect(() => sim.release()).toThrow(/Unknown pledge note/);
+  });
+});
+
+describe('encrypted delivery and the lender inbox', () => {
+  const deliveriesOf = (w: ReturnType<typeof newWorld>) => [...w.sim.ledger().deliveries];
+
+  it('lets the lender of record find its own pledge by scanning', () => {
+    const w = newWorld();
+    const inv = attestInvoice(w.authority, w.borrower, invoiceNumber());
+    const { note, noteSalt } = pledgeAs(w, inv, w.lenderA, w.borrower, true);
+
+    // The inbox: try every delivery, keep the ones that open. Nothing on chain says which is yours.
+    const opened = deliveriesOf(w)
+      .map(([key, ct]) => ({ key, opening: openDelivery(w.lenderA, ct) }))
+      .filter((d) => d.opening !== undefined);
+
+    expect(opened).toHaveLength(1);
+    expect(opened[0].opening!.tag).toEqual(inv.attestation.tag);
+    expect(opened[0].opening!.amount).toBe(inv.attestation.amount);
+    expect(opened[0].opening!.salt).toEqual(noteSalt);
+
+    // The opening must recompute to the note it was filed under, or it is not this pledge.
+    const o = opened[0].opening!;
+    expect(
+      hex(pureCircuits.noteCommitment(o.tag, pureCircuits.lenderKey(w.lenderA), o.invoiceCommit, o.amount, o.salt)),
+    ).toBe(hex(note));
+    expect(hex(opened[0].key)).toBe(hex(note));
+  });
+
+  it('tells a different lender nothing, even scanning every delivery', () => {
+    const w = newWorld();
+    const inv = attestInvoice(w.authority, w.borrower, invoiceNumber());
+    pledgeAs(w, inv, w.lenderA, w.borrower, true);
+    expect(deliveriesOf(w).filter(([, ct]) => openDelivery(w.lenderB, ct) !== undefined)).toHaveLength(0);
+  });
+
+  it('files each pledge under its own note, so two lenders each find only theirs', () => {
+    const w = newWorld();
+    const first = attestInvoice(w.authority, w.borrower, invoiceNumber());
+    const second = attestInvoice(w.authority, w.borrower, invoiceNumber());
+    pledgeAs(w, first, w.lenderA, w.borrower, true);
+    pledgeAs(w, second, w.lenderB, w.borrower, true);
+
+    expect(deliveriesOf(w)).toHaveLength(2);
+    const forA = deliveriesOf(w).filter(([, ct]) => openDelivery(w.lenderA, ct) !== undefined);
+    const forB = deliveriesOf(w).filter(([, ct]) => openDelivery(w.lenderB, ct) !== undefined);
+    expect(forA).toHaveLength(1);
+    expect(forB).toHaveLength(1);
+    expect(hex(forA[0][0])).not.toBe(hex(forB[0][0]));
+  });
+
+  it('survives a borrower posting garbage: the lender simply finds nothing and can decline', () => {
+    const w = newWorld();
+    const inv = attestInvoice(w.authority, w.borrower, invoiceNumber());
+    const noteSalt = secret();
+    w.sim.as(borrowerState(w.borrower, inv, w.lenderA, noteSalt));
+    // The circuit cannot constrain an opaque value, so this is accepted on chain.
+    w.sim.pledge(pureCircuits.lenderKey(w.lenderA), new Uint8Array([1, 2, 3, 4]));
+
+    expect(deliveriesOf(w).filter(([, ct]) => openDelivery(w.lenderA, ct) !== undefined)).toHaveLength(0);
+
+    // The void path is the remedy, and it still works.
+    w.sim.as(lenderReleaseState(w.lenderA, inv, noteSalt));
+    w.sim.declinePledge();
+    expect(w.sim.ledger().tags.member(inv.attestation.tag)).toBe(false);
+  });
+
+  it("publishes each admitted lender's encryption key, so a borrower can address it", () => {
+    const w = newWorld();
+    const keys = w.sim.ledger().lenderEncryptionKeys;
+    expect(keys.member(pureCircuits.lenderKey(w.lenderA))).toBe(true);
+    expect(hex(keys.lookup(pureCircuits.lenderKey(w.lenderA)))).toBe(hex(lenderEncryptionKey(w.lenderA)));
+    expect(hex(keys.lookup(pureCircuits.lenderKey(w.lenderB)))).toBe(hex(lenderEncryptionKey(w.lenderB)));
   });
 });
 

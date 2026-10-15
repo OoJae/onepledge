@@ -16,13 +16,15 @@ import {
   addressBytes,
   attest,
   invoiceCommitment,
+  lenderEncryptionKey,
   newSalt,
   parseKsefNumber,
   receivableTag,
+  sealOpening,
   syntheticKsefNumber,
   type InvoiceFields,
 } from '@onepledge/attester';
-import { Registry, type OnePledgePrivateState } from '@onepledge/contract';
+import { Registry, type Attestation, type OnePledgePrivateState } from '@onepledge/contract';
 import { selectNetwork } from './config.js';
 import {
   type DeploymentRecord,
@@ -128,6 +130,15 @@ const submit = async (circuit: string, call: () => Promise<{ public: TxPublic }>
   }
 };
 
+/** The opening the lender of record will need, encrypted so only it can read it. */
+const sealFor = (lenderSecret: Uint8Array, att: { attestation: Attestation }, noteSalt: Uint8Array) =>
+  sealOpening(lenderEncryptionKey(lenderSecret), {
+    tag: att.attestation.tag,
+    invoiceCommit: att.attestation.invoiceCommit,
+    amount: att.attestation.amount,
+    salt: noteSalt,
+  });
+
 const attestFor = (ksefNumber: string, amountGrosz: string) => {
   const parsed = parseKsefNumber(ksefNumber);
   const fields: InvoiceFields = {
@@ -163,7 +174,7 @@ for (const [label, secret] of [['lender A', parties.lenderA], ['lender B', parti
     log(`Registrar admits ${label}: already recorded, skipping`);
     continue;
   }
-  const tx = await submit('admitLender', () => registrar.callTx.admitLender(lenderKey(secret)));
+  const tx = await submit('admitLender', () => registrar.callTx.admitLender(lenderKey(secret), lenderEncryptionKey(secret)));
   note(`Registrar admits ${label}`, 'admitLender', 'accepted', tx.public);
 }
 
@@ -176,7 +187,9 @@ const borrowerA = await join('borrower', {
   pledgeLender: lenderKey(parties.lenderA),
   noteSalt: noteSalt1,
 });
-const pledged = await submit('pledge', () => borrowerA.callTx.pledge(lenderKey(parties.lenderA)));
+const pledged = await submit('pledge', () =>
+  borrowerA.callTx.pledge(lenderKey(parties.lenderA), sealFor(parties.lenderA, att1, noteSalt1)),
+);
 note('Borrower pledges invoice 1 to lender A', 'pledge', 'accepted', pledged.public);
 
 // 3. Same invoice, fresh attestation, different lender: must be rejected.
@@ -188,7 +201,7 @@ await providers.privateStateProvider.set('borrower', {
   noteSalt: newSalt(),
 });
 try {
-  await borrowerA.callTx.pledge(lenderKey(parties.lenderB));
+  await borrowerA.callTx.pledge(lenderKey(parties.lenderB), new Uint8Array());
   note('Borrower re-pledges invoice 1 to lender B', 'pledge', 'UNEXPECTEDLY ACCEPTED');
   throw new Error('Double pledge was accepted; aborting demo');
 } catch (e) {
@@ -220,7 +233,9 @@ await providers.privateStateProvider.set('borrower', {
   pledgeLender: lenderKey(parties.lenderB),
   noteSalt: noteSalt2,
 });
-const pledged2 = await submit('pledge', () => borrowerA.callTx.pledge(lenderKey(parties.lenderB)));
+const pledged2 = await submit('pledge', () =>
+  borrowerA.callTx.pledge(lenderKey(parties.lenderB), sealFor(parties.lenderB, att2, noteSalt2)),
+);
 note('Borrower pledges invoice 2 to lender B', 'pledge', 'accepted', pledged2.public);
 
 // 6. Lender B refuses it, which frees the receivable. Before Wave 2 a pledge no lender agreed to
@@ -239,13 +254,16 @@ note('Lender B declines invoice 2, freeing the receivable', 'declinePledge', 'ac
 
 // 7. The freed invoice is financed elsewhere: the proof that declining really releases the tag.
 const att2again = attestFor(invoice2, '8300000');
+const noteSalt3 = newSalt();
 await providers.privateStateProvider.set('borrower', {
   secretKey: parties.borrower,
   attestation: att2again.attestation,
   pledgeLender: lenderKey(parties.lenderA),
-  noteSalt: newSalt(),
+  noteSalt: noteSalt3,
 });
-const repledged = await submit('pledge', () => borrowerA.callTx.pledge(lenderKey(parties.lenderA)));
+const repledged = await submit('pledge', () =>
+  borrowerA.callTx.pledge(lenderKey(parties.lenderA), sealFor(parties.lenderA, att2again, noteSalt3)),
+);
 note('Borrower pledges the freed invoice 2 to lender A', 'pledge', 'accepted', repledged.public);
 
 // 8. Lender A releases invoice 1 (paid).

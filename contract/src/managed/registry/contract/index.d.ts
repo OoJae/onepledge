@@ -48,20 +48,28 @@ export type Witnesses<PS> = {
 }
 
 export type ImpureCircuits<PS> = {
-  admitLender(context: __compactRuntime.CircuitContext<PS>, lender_0: Uint8Array): __compactRuntime.CircuitResults<PS, []>;
+  admitLender(context: __compactRuntime.CircuitContext<PS>,
+              lender_0: Uint8Array,
+              encryptionKey_0: Uint8Array): __compactRuntime.CircuitResults<PS, []>;
   rotateRegistrar(context: __compactRuntime.CircuitContext<PS>,
                   next_0: Uint8Array): __compactRuntime.CircuitResults<PS, []>;
-  pledge(context: __compactRuntime.CircuitContext<PS>, lender_0: Uint8Array): __compactRuntime.CircuitResults<PS, Uint8Array>;
+  pledge(context: __compactRuntime.CircuitContext<PS>,
+         lender_0: Uint8Array,
+         delivery_0: Uint8Array): __compactRuntime.CircuitResults<PS, Uint8Array>;
   release(context: __compactRuntime.CircuitContext<PS>): __compactRuntime.CircuitResults<PS, []>;
   acceptPledge(context: __compactRuntime.CircuitContext<PS>): __compactRuntime.CircuitResults<PS, []>;
   declinePledge(context: __compactRuntime.CircuitContext<PS>): __compactRuntime.CircuitResults<PS, []>;
 }
 
 export type ProvableCircuits<PS> = {
-  admitLender(context: __compactRuntime.CircuitContext<PS>, lender_0: Uint8Array): __compactRuntime.CircuitResults<PS, []>;
+  admitLender(context: __compactRuntime.CircuitContext<PS>,
+              lender_0: Uint8Array,
+              encryptionKey_0: Uint8Array): __compactRuntime.CircuitResults<PS, []>;
   rotateRegistrar(context: __compactRuntime.CircuitContext<PS>,
                   next_0: Uint8Array): __compactRuntime.CircuitResults<PS, []>;
-  pledge(context: __compactRuntime.CircuitContext<PS>, lender_0: Uint8Array): __compactRuntime.CircuitResults<PS, Uint8Array>;
+  pledge(context: __compactRuntime.CircuitContext<PS>,
+         lender_0: Uint8Array,
+         delivery_0: Uint8Array): __compactRuntime.CircuitResults<PS, Uint8Array>;
   release(context: __compactRuntime.CircuitContext<PS>): __compactRuntime.CircuitResults<PS, []>;
   acceptPledge(context: __compactRuntime.CircuitContext<PS>): __compactRuntime.CircuitResults<PS, []>;
   declinePledge(context: __compactRuntime.CircuitContext<PS>): __compactRuntime.CircuitResults<PS, []>;
@@ -122,10 +130,14 @@ export type Circuits<PS> = {
                    pk_x_0: bigint,
                    pk_y_0: bigint,
                    msg_0: bigint[]): __compactRuntime.CircuitResults<PS, bigint>;
-  admitLender(context: __compactRuntime.CircuitContext<PS>, lender_0: Uint8Array): __compactRuntime.CircuitResults<PS, []>;
+  admitLender(context: __compactRuntime.CircuitContext<PS>,
+              lender_0: Uint8Array,
+              encryptionKey_0: Uint8Array): __compactRuntime.CircuitResults<PS, []>;
   rotateRegistrar(context: __compactRuntime.CircuitContext<PS>,
                   next_0: Uint8Array): __compactRuntime.CircuitResults<PS, []>;
-  pledge(context: __compactRuntime.CircuitContext<PS>, lender_0: Uint8Array): __compactRuntime.CircuitResults<PS, Uint8Array>;
+  pledge(context: __compactRuntime.CircuitContext<PS>,
+         lender_0: Uint8Array,
+         delivery_0: Uint8Array): __compactRuntime.CircuitResults<PS, Uint8Array>;
   release(context: __compactRuntime.CircuitContext<PS>): __compactRuntime.CircuitResults<PS, []>;
   acceptPledge(context: __compactRuntime.CircuitContext<PS>): __compactRuntime.CircuitResults<PS, []>;
   declinePledge(context: __compactRuntime.CircuitContext<PS>): __compactRuntime.CircuitResults<PS, []>;
@@ -144,6 +156,20 @@ export type Ledger = {
     pathForLeaf(index_0: bigint, leaf_0: Uint8Array): __compactRuntime.MerkleTreePath<Uint8Array>;
     findPathForLeaf(leaf_0: Uint8Array): __compactRuntime.MerkleTreePath<Uint8Array> | undefined;
     history(): Iterator<__compactRuntime.MerkleTreeDigest>
+  };
+  lenderEncryptionKeys: {
+    isEmpty(): boolean;
+    size(): bigint;
+    member(key_0: Uint8Array): boolean;
+    lookup(key_0: Uint8Array): Uint8Array;
+    [Symbol.iterator](): Iterator<[Uint8Array, Uint8Array]>
+  };
+  deliveries: {
+    isEmpty(): boolean;
+    size(): bigint;
+    member(key_0: Uint8Array): boolean;
+    lookup(key_0: Uint8Array): Uint8Array;
+    [Symbol.iterator](): Iterator<[Uint8Array, Uint8Array]>
   };
   tags: {
     isEmpty(): boolean;

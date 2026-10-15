@@ -86,16 +86,18 @@ export class RegistrySimulator {
     return result.result;
   }
 
-  admitLender(lender: Uint8Array): void {
-    this.run((ctx) => this.contract.impureCircuits.admitLender(ctx, lender));
+  /** encryptionKey defaults to zeros: tests that exercise authorization do not care about it, and
+   *  the real callers (CLI, web) always pass the lender's derived key. */
+  admitLender(lender: Uint8Array, encryptionKey: Uint8Array = new Uint8Array(32)): void {
+    this.run((ctx) => this.contract.impureCircuits.admitLender(ctx, lender, encryptionKey));
   }
 
   rotateRegistrar(next: Uint8Array): void {
     this.run((ctx) => this.contract.impureCircuits.rotateRegistrar(ctx, next));
   }
 
-  pledge(lender: Uint8Array): Uint8Array {
-    return this.run((ctx) => this.contract.impureCircuits.pledge(ctx, lender));
+  pledge(lender: Uint8Array, delivery: Uint8Array = new Uint8Array()): Uint8Array {
+    return this.run((ctx) => this.contract.impureCircuits.pledge(ctx, lender, delivery));
   }
 
   release(): void {
