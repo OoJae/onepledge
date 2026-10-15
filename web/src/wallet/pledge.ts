@@ -48,6 +48,7 @@ export const loadBundle = async (): Promise<DemoBundle> => {
       attestation: {
         tag: string;
         invoiceCommit: string;
+        amount: string;
         acceptanceDay: number;
         expiresAt: string;
         borrower: string;
@@ -66,6 +67,7 @@ export const loadBundle = async (): Promise<DemoBundle> => {
       attestation: {
         tag: bytes(a.attestation.tag),
         invoiceCommit: bytes(a.attestation.invoiceCommit),
+        amount: BigInt(a.attestation.amount),
         acceptanceDay: BigInt(a.attestation.acceptanceDay),
         expiresAt: BigInt(a.attestation.expiresAt),
         borrower: bytes(a.attestation.borrower),
@@ -127,6 +129,12 @@ export const sendPledge = async (
   return {
     txHash: tx.public.txHash,
     blockHeight: tx.public.blockHeight,
-    note: hex(Registry.pureCircuits.noteCommitment(chosen.attestation.tag, lenderKey, chosen.attestation.invoiceCommit, noteSalt)),
+    note: hex(Registry.pureCircuits.noteCommitment(
+      chosen.attestation.tag,
+      lenderKey,
+      chosen.attestation.invoiceCommit,
+      chosen.attestation.amount,
+      noteSalt,
+    )),
   };
 };

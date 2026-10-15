@@ -140,6 +140,7 @@ const attestFor = (ksefNumber: string, amountGrosz: string) => {
   };
   const salt = newSalt();
   const attestation = attest(authority.sk, {
+    amount: BigInt(amountGrosz),
     registry: addressBytes(record.contractAddress),
     expiresAt: BigInt(Math.floor(Date.now() / 1000) + 7 * 86_400),
     tag: receivableTag(authority.tagSecret, parsed.canonical),
@@ -200,7 +201,12 @@ try {
 // 4. Lender A takes the pledge. Until this runs it is a one-sided claim by the borrower.
 const lenderA = await join('lenderA', {
   secretKey: parties.lenderA,
-  releaseNote: { tag: att1.attestation.tag, invoiceCommit: att1.attestation.invoiceCommit, salt: noteSalt1 },
+  releaseNote: {
+    tag: att1.attestation.tag,
+    invoiceCommit: att1.attestation.invoiceCommit,
+    amount: att1.attestation.amount,
+    salt: noteSalt1,
+  },
 });
 const accepted = await submit('acceptPledge', () => lenderA.callTx.acceptPledge());
 note('Lender A accepts invoice 1', 'acceptPledge', 'accepted', accepted.public);
@@ -221,7 +227,12 @@ note('Borrower pledges invoice 2 to lender B', 'pledge', 'accepted', pledged2.pu
 //    burned the invoice forever (security review F10).
 const lenderB = await join('lenderB', {
   secretKey: parties.lenderB,
-  releaseNote: { tag: att2.attestation.tag, invoiceCommit: att2.attestation.invoiceCommit, salt: noteSalt2 },
+  releaseNote: {
+    tag: att2.attestation.tag,
+    invoiceCommit: att2.attestation.invoiceCommit,
+    amount: att2.attestation.amount,
+    salt: noteSalt2,
+  },
 });
 const declined = await submit('declinePledge', () => lenderB.callTx.declinePledge());
 note('Lender B declines invoice 2, freeing the receivable', 'declinePledge', 'accepted', declined.public);

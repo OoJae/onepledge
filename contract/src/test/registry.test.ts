@@ -107,7 +107,15 @@ describe('pledge', () => {
     expect(l.tags.member(inv.attestation.tag)).toBe(true);
     expect(l.notes.findPathForLeaf(note)).toBeDefined();
     expect(hex(note)).toBe(
-      hex(pureCircuits.noteCommitment(inv.attestation.tag, pureCircuits.lenderKey(w.lenderA), inv.attestation.invoiceCommit, noteSalt)),
+      hex(
+        pureCircuits.noteCommitment(
+          inv.attestation.tag,
+          pureCircuits.lenderKey(w.lenderA),
+          inv.attestation.invoiceCommit,
+          inv.attestation.amount,
+          noteSalt,
+        ),
+      ),
     );
   });
 
@@ -549,23 +557,33 @@ describe('pure helpers', () => {
 
   it('reduces the whole attestation body to one digest that changes with every field', () => {
     const [registry, tag, commit, borrower] = [secret(), secret(), secret(), secret()];
-    const base = pureCircuits.attestationMessage(registry, tag, commit, 20_000n, 1_800_000_000n, borrower);
+    const amount = 12_500_000n;
+    const base = pureCircuits.attestationMessage(registry, tag, commit, amount, 20_000n, 1_800_000_000n, borrower);
     expect(base).toHaveLength(1);
     const variants = [
-      pureCircuits.attestationMessage(secret(), tag, commit, 20_000n, 1_800_000_000n, borrower),
-      pureCircuits.attestationMessage(registry, secret(), commit, 20_000n, 1_800_000_000n, borrower),
-      pureCircuits.attestationMessage(registry, tag, secret(), 20_000n, 1_800_000_000n, borrower),
-      pureCircuits.attestationMessage(registry, tag, commit, 20_001n, 1_800_000_000n, borrower),
-      pureCircuits.attestationMessage(registry, tag, commit, 20_000n, 1_800_086_400n, borrower),
-      pureCircuits.attestationMessage(registry, tag, commit, 20_000n, 1_800_000_000n, secret()),
+      pureCircuits.attestationMessage(secret(), tag, commit, amount, 20_000n, 1_800_000_000n, borrower),
+      pureCircuits.attestationMessage(registry, secret(), commit, amount, 20_000n, 1_800_000_000n, borrower),
+      pureCircuits.attestationMessage(registry, tag, secret(), amount, 20_000n, 1_800_000_000n, borrower),
+      // One grosz more is a different signed body: a borrowing-base proof cannot inflate the amount.
+      pureCircuits.attestationMessage(registry, tag, commit, amount + 1n, 20_000n, 1_800_000_000n, borrower),
+      pureCircuits.attestationMessage(registry, tag, commit, amount, 20_001n, 1_800_000_000n, borrower),
+      pureCircuits.attestationMessage(registry, tag, commit, amount, 20_000n, 1_800_086_400n, borrower),
+      pureCircuits.attestationMessage(registry, tag, commit, amount, 20_000n, 1_800_000_000n, secret()),
     ];
     for (const v of variants) expect(v[0]).not.toBe(base[0]);
   });
 
   it('makes note commitments hiding: same pledge, different salt, unrelated commitments', () => {
     const [tag, lender, commit] = [secret(), secret(), secret()];
-    expect(hex(pureCircuits.noteCommitment(tag, lender, commit, secret()))).not.toBe(
-      hex(pureCircuits.noteCommitment(tag, lender, commit, secret())),
+    expect(hex(pureCircuits.noteCommitment(tag, lender, commit, 12_500_000n, secret()))).not.toBe(
+      hex(pureCircuits.noteCommitment(tag, lender, commit, 12_500_000n, secret())),
+    );
+  });
+
+  it('binds the amount into the note commitment', () => {
+    const [tag, lender, commit, salt] = [secret(), secret(), secret(), secret()];
+    expect(hex(pureCircuits.noteCommitment(tag, lender, commit, 12_500_000n, salt))).not.toBe(
+      hex(pureCircuits.noteCommitment(tag, lender, commit, 12_500_001n, salt)),
     );
   });
 });

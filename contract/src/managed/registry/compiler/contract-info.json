@@ -84,6 +84,13 @@
           }
         },
         {
+          "name": "amount",
+          "type": {
+            "type-name": "Uint",
+            "maxval": 18446744073709551615
+          }
+        },
+        {
           "name": "salt",
           "type": {
             "type-name": "Bytes",
@@ -170,6 +177,13 @@
           "type": {
             "type-name": "Bytes",
             "length": 32
+          }
+        },
+        {
+          "name": "amount",
+          "type": {
+            "type-name": "Uint",
+            "maxval": 18446744073709551615
           }
         },
         {
@@ -396,6 +410,13 @@
             }
           },
           {
+            "name": "amount",
+            "type": {
+              "type-name": "Uint",
+              "maxval": 18446744073709551615
+            }
+          },
+          {
             "name": "acceptanceDay",
             "type": {
               "type-name": "Uint",
@@ -520,6 +541,10 @@
           {
             "type-name": "Bytes",
             "length": 32
+          },
+          {
+            "type-name": "Uint",
+            "maxval": 18446744073709551615
           },
           {
             "type-name": "Bytes",

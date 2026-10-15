@@ -2,6 +2,7 @@ import type * as __compactRuntime from '@midnight-ntwrk/compact-runtime';
 
 export type Attestation = { tag: Uint8Array;
                             invoiceCommit: Uint8Array;
+                            amount: bigint;
                             acceptanceDay: bigint;
                             expiresAt: bigint;
                             borrower: Uint8Array;
@@ -12,6 +13,7 @@ export type AttestationBody = { domain: Uint8Array;
                                 registry: Uint8Array;
                                 tag: Uint8Array;
                                 invoiceCommit: Uint8Array;
+                                amount: bigint;
                                 acceptanceDay: bigint;
                                 expiresAt: bigint;
                                 borrower: Uint8Array
@@ -35,6 +37,7 @@ export type Witnesses<PS> = {
   getNoteSalt(context: __compactRuntime.WitnessContext<Ledger, PS>): [PS, Uint8Array];
   getNoteOpening(context: __compactRuntime.WitnessContext<Ledger, PS>): [PS, [Uint8Array,
                                                                               Uint8Array,
+                                                                              bigint,
                                                                               Uint8Array]];
   getNotePath(context: __compactRuntime.WitnessContext<Ledger, PS>): [PS, { leaf: Uint8Array,
                                                                             path: { sibling: { field: bigint
@@ -71,12 +74,14 @@ export type PureCircuits = {
   noteCommitment(tag_0: Uint8Array,
                  lender_0: Uint8Array,
                  invoiceCommit_0: Uint8Array,
+                 amount_0: bigint,
                  salt_0: Uint8Array): Uint8Array;
   decisionNullifier(note_0: Uint8Array, lenderSecret_0: Uint8Array): Uint8Array;
   releaseNullifier(note_0: Uint8Array, lenderSecret_0: Uint8Array): Uint8Array;
   attestationMessage(registry_0: Uint8Array,
                      tag_0: Uint8Array,
                      invoiceCommit_0: Uint8Array,
+                     amount_0: bigint,
                      acceptanceDay_0: bigint,
                      expiresAt_0: bigint,
                      borrower_0: Uint8Array): bigint[];
@@ -95,6 +100,7 @@ export type Circuits<PS> = {
                  tag_0: Uint8Array,
                  lender_0: Uint8Array,
                  invoiceCommit_0: Uint8Array,
+                 amount_0: bigint,
                  salt_0: Uint8Array): __compactRuntime.CircuitResults<PS, Uint8Array>;
   decisionNullifier(context: __compactRuntime.CircuitContext<PS>,
                     note_0: Uint8Array,
@@ -106,6 +112,7 @@ export type Circuits<PS> = {
                      registry_0: Uint8Array,
                      tag_0: Uint8Array,
                      invoiceCommit_0: Uint8Array,
+                     amount_0: bigint,
                      acceptanceDay_0: bigint,
                      expiresAt_0: bigint,
                      borrower_0: Uint8Array): __compactRuntime.CircuitResults<PS, bigint[]>;

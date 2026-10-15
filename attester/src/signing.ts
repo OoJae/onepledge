@@ -56,6 +56,8 @@ export interface AttestationRequest {
   readonly registry: Uint8Array;
   readonly tag: Uint8Array;
   readonly invoiceCommit: Uint8Array;
+  /** Face value in grosz. Signed by the authority so a borrowing-base proof cannot inflate it. */
+  readonly amount: bigint;
   readonly acceptanceDay: number;
   /** Unix seconds; rounded up to the next whole UTC day. */
   readonly expiresAt: bigint;
@@ -63,12 +65,13 @@ export interface AttestationRequest {
 }
 
 const messageFor = (registry: Uint8Array, a: Omit<Attestation, 'signature'>) =>
-  Registry.pureCircuits.attestationMessage(registry, a.tag, a.invoiceCommit, a.acceptanceDay, a.expiresAt, a.borrower);
+  Registry.pureCircuits.attestationMessage(registry, a.tag, a.invoiceCommit, a.amount, a.acceptanceDay, a.expiresAt, a.borrower);
 
 export const attest = (authoritySk: bigint, req: AttestationRequest): Attestation => {
   const body = {
     tag: req.tag,
     invoiceCommit: req.invoiceCommit,
+    amount: req.amount,
     acceptanceDay: BigInt(req.acceptanceDay),
     expiresAt: roundUpToDay(req.expiresAt),
     borrower: req.borrower,

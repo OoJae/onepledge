@@ -73,6 +73,7 @@ export class Walkthrough {
   attestFresh(): Attestation {
     const parsed = parseKsefNumber(this.invoice.ksefNumber);
     return attest(this.authority.sk, {
+    amount: BigInt(this.invoice.amountGrosz),
       registry: this.sim.addressBytes(),
       expiresAt: BigInt(Math.floor(Date.now() / 1000) + 365 * 86_400),
       tag: receivableTag(this.authority.tagSecret, parsed.canonical),
@@ -120,14 +121,24 @@ export class Walkthrough {
   private asLenderA(noteSalt: Uint8Array): void {
     this.sim.as({
       secretKey: this.lenderA,
-      releaseNote: { tag: this.attestation.tag, invoiceCommit: this.attestation.invoiceCommit, salt: noteSalt },
+      releaseNote: {
+        tag: this.attestation.tag,
+        invoiceCommit: this.attestation.invoiceCommit,
+        amount: this.attestation.amount,
+        salt: noteSalt,
+      },
     });
   }
 
   releaseByA(noteSalt: Uint8Array): Outcome {
     this.sim.as({
       secretKey: this.lenderA,
-      releaseNote: { tag: this.attestation.tag, invoiceCommit: this.attestation.invoiceCommit, salt: noteSalt },
+      releaseNote: {
+        tag: this.attestation.tag,
+        invoiceCommit: this.attestation.invoiceCommit,
+        amount: this.attestation.amount,
+        salt: noteSalt,
+      },
     });
     return this.attempt(() => this.sim.release(), 'Released by lender A');
   }

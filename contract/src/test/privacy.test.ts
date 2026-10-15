@@ -193,6 +193,36 @@ describe('allowlist: a transcript publishes only what the design intends', () =>
     const dayHex = day.toString(16).padStart(4, '0');
     const leaksDay = values.some((h) => (asBig(h) === day || asBig(reverseHex(h)) === day) && day !== before.windowStart && day !== before.windowEnd);
     expect(leaksDay, `acceptance day ${dayHex} published`).toBe(false);
+
+    // The amount is signed by the authority and bound into the note, but it is the borrower's
+    // commercial information: a pledge must never publish what the receivable is worth.
+    const amount = inv.attestation.amount;
+    const leaksAmount = values.some((h) => asBig(h) === amount || asBig(reverseHex(h)) === amount);
+    expect(leaksAmount, `invoice amount ${amount} published`).toBe(false);
+  });
+
+  it('positive control: the same search finds the expiry, which a pledge does publish', () => {
+    // Without this, "the amount is absent" could pass simply because the search never matches
+    // anything. The expiry is published by design (threat model, disclose ledger), so it must be found.
+    const w = newWorld();
+    const inv = attestInvoice(w.authority, w.borrower, invoiceNumber(), '987654321');
+    pledgeAs(w, inv, w.lenderA);
+    const values = transcriptValues(w.sim.lastResult!.proofData.publicTranscript);
+    const expiry = inv.attestation.expiresAt;
+    expect(
+      values.some((h) => asBig(h) === expiry || asBig(reverseHex(h)) === expiry),
+      'expiry not found: the amount checks below would be vacuous',
+    ).toBe(true);
+  });
+
+  it('a pledge of a large invoice publishes nothing the amount could be read from', () => {
+    // A distinctive amount that cannot collide with a day, a counter or a window bound.
+    const w = newWorld();
+    const inv = attestInvoice(w.authority, w.borrower, invoiceNumber(), '987654321');
+    pledgeAs(w, inv, w.lenderA);
+    const values = transcriptValues(w.sim.lastResult!.proofData.publicTranscript);
+    expect(values.some((h) => asBig(h) === 987654321n || asBig(reverseHex(h)) === 987654321n)).toBe(false);
+    expectAbsent(toJson(w.sim.lastResult!.proofData.publicTranscript), 'invoice amount', 987654321n);
   });
 
   it('release publishes only the nullifier and the notes root', () => {

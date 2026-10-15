@@ -12,6 +12,8 @@ export type SchnorrSignature = { announcement: Point; response: bigint };
 export type Attestation = {
   tag: Uint8Array;
   invoiceCommit: Uint8Array;
+  /** Face value in grosz, signed by the tag authority. Bound into the note, never published. */
+  amount: bigint;
   acceptanceDay: bigint;
   /** Unix seconds (a whole UTC day); the pledge fails once the block time reaches it. */
   expiresAt: bigint;
@@ -19,7 +21,13 @@ export type Attestation = {
   signature: SchnorrSignature;
 };
 
-export type NoteOpening = { tag: Uint8Array; invoiceCommit: Uint8Array; salt: Uint8Array };
+export type NoteOpening = {
+  tag: Uint8Array;
+  invoiceCommit: Uint8Array;
+  /** Face value in grosz, as attested. Bound into the note commitment, never published. */
+  amount: bigint;
+  salt: Uint8Array;
+};
 
 /**
  * One secret per party (registrar, borrower or lender). Role keys are derived from it with
@@ -69,17 +77,17 @@ export const witnesses = {
     require32('noteSalt', privateState.noteSalt),
   ],
 
-  getNoteOpening: ({ privateState }: Ctx): [OnePledgePrivateState, [Uint8Array, Uint8Array, Uint8Array]] => {
+  getNoteOpening: ({ privateState }: Ctx): [OnePledgePrivateState, [Uint8Array, Uint8Array, bigint, Uint8Array]] => {
     const n = privateState.releaseNote;
     if (!n) throw new Error('No note opening loaded for this release');
-    return [privateState, [n.tag, n.invoiceCommit, n.salt]];
+    return [privateState, [n.tag, n.invoiceCommit, n.amount, n.salt]];
   },
 
   getNotePath: ({ privateState, ledger }: Ctx) => {
     const n = privateState.releaseNote;
     if (!n) throw new Error('No note opening loaded for this release');
     const lender = pureCircuits.lenderKey(require32('secretKey', privateState.secretKey));
-    const note = pureCircuits.noteCommitment(n.tag, lender, n.invoiceCommit, n.salt);
+    const note = pureCircuits.noteCommitment(n.tag, lender, n.invoiceCommit, n.amount, n.salt);
     const path = ledger.notes.findPathForLeaf(note);
     if (!path) throw new Error('Pledge note not found on the ledger');
     return [privateState, path] as [OnePledgePrivateState, typeof path];

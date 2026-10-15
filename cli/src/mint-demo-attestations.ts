@@ -64,6 +64,7 @@ const mint = (index: number) => {
   };
   const salt = newSalt();
   const attestation = attest(authority.sk, {
+    amount: BigInt(amountGrosz),
     registry: addressBytes(record.contractAddress),
     // Long-lived so the published demo keeps working; the registry's own window still bounds it.
     expiresAt: BigInt(Math.floor(Date.now() / 1000) + 180 * 86_400),
@@ -78,6 +79,7 @@ const mint = (index: number) => {
     attestation: {
       tag: hex(attestation.tag),
       invoiceCommit: hex(attestation.invoiceCommit),
+      amount: attestation.amount.toString(),
       acceptanceDay: Number(attestation.acceptanceDay),
       expiresAt: attestation.expiresAt.toString(),
       borrower: hex(attestation.borrower),

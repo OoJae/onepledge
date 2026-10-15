@@ -70,6 +70,7 @@ export const attestInvoice = (
   };
   const salt = newSalt();
   const attestation = attest(authority.sk, {
+    amount: BigInt(amountGrosz),
     registry: addressBytesOf(options.registry ?? SIM_ADDRESS),
     expiresAt: options.expiresAt ?? BigInt(NOW + 30 * 86_400),
     tag: receivableTag(authority.tagSecret, parsed.canonical),
@@ -127,5 +128,10 @@ export const pledgeAs = (w: World, invoice: AttestedInvoice, lenderSecret: Uint8
 
 export const lenderReleaseState = (lenderSecret: Uint8Array, invoice: AttestedInvoice, noteSalt: Uint8Array) => ({
   secretKey: lenderSecret,
-  releaseNote: { tag: invoice.attestation.tag, invoiceCommit: invoice.attestation.invoiceCommit, salt: noteSalt },
+  releaseNote: {
+    tag: invoice.attestation.tag,
+    invoiceCommit: invoice.attestation.invoiceCommit,
+    amount: invoice.attestation.amount,
+    salt: noteSalt,
+  },
 });

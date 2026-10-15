@@ -33,6 +33,10 @@ export { Schnorr_SchnorrSignature };
 export struct Attestation {
   tag: Bytes<32>;
   invoiceCommit: Bytes<32>;
+  // Face value in the registry's unit (grosz). The authority attests it because a borrowing-base
+  // proof is only as honest as the amounts it sums; without this a borrower could claim any figure.
+  // It is never disclosed: pledge binds it into the note commitment and nothing publishes it.
+  amount: Uint<64>;
   acceptanceDay: Uint<32>;
   expiresAt: Uint<64>;
   borrower: Bytes<32>;
@@ -46,6 +50,7 @@ export struct AttestationBody {
   registry: Bytes<32>;
   tag: Bytes<32>;
   invoiceCommit: Bytes<32>;
+  amount: Uint<64>;
   acceptanceDay: Uint<32>;
   expiresAt: Uint<64>;
   borrower: Bytes<32>;
@@ -82,7 +87,7 @@ witness localSecretKey(): Bytes<32>;
 witness getAttestation(): Attestation;
 witness getLenderPath(): MerkleTreePath<10, Bytes<32>>;
 witness getNoteSalt(): Bytes<32>;
-witness getNoteOpening(): [Bytes<32>, Bytes<32>, Bytes<32>];
+witness getNoteOpening(): [Bytes<32>, Bytes<32>, Uint<64>, Bytes<32>];
 witness getNotePath(): MerkleTreePath<16, Bytes<32>>;
 
 constructor(authority: JubjubPoint, start: Uint<32>, end: Uint<32>) {
@@ -110,9 +115,26 @@ export pure circuit lenderKey(sk: Bytes<32>): Bytes<32> {
   return persistentHash<Vector<2, Bytes<32>>>([pad(32, "onepledge:lender:v1"), sk]);
 }
 
+struct NoteBody {
+  domain: Bytes<32>;
+  tag: Bytes<32>;
+  lender: Bytes<32>;
+  invoiceCommit: Bytes<32>;
+  amount: Uint<64>;
+  salt: Bytes<32>;
+}
+
 export pure circuit noteCommitment(tag: Bytes<32>, lender: Bytes<32>, invoiceCommit: Bytes<32>,
-                                   salt: Bytes<32>): Bytes<32> {
-  return persistentHash<Vector<5, Bytes<32>>>([pad(32, "onepledge:note:v1"), tag, lender, invoiceCommit, salt]);
+                                   amount: Uint<64>, salt: Bytes<32>): Bytes<32> {
+  const body = NoteBody {
+    domain: pad(32, "onepledge:note:v2"),
+    tag: tag,
+    lender: lender,
+    invoiceCommit: invoiceCommit,
+    amount: amount,
+    salt: salt
+  };
+  return persistentHash<NoteBody>(body);
 }
 
 // Marks one lender's decision on one note. Domain-separated from the release nullifier so the two
@@ -129,13 +151,14 @@ export pure circuit releaseNullifier(note: Bytes<32>, lenderSecret: Bytes<32>): 
 // to a Field. The digest keeps 248 of its 256 bits, which is fine for a hash output; v1's bug
 // was truncating the raw tag, not a digest of it.
 export pure circuit attestationMessage(registry: Bytes<32>, tag: Bytes<32>, invoiceCommit: Bytes<32>,
-                                       acceptanceDay: Uint<32>, expiresAt: Uint<64>,
+                                       amount: Uint<64>, acceptanceDay: Uint<32>, expiresAt: Uint<64>,
                                        borrower: Bytes<32>): Vector<1, Field> {
   const body = AttestationBody {
-    domain: pad(32, "onepledge:attest:v2"),
+    domain: pad(32, "onepledge:attest:v3"),
     registry: registry,
     tag: tag,
     invoiceCommit: invoiceCommit,
+    amount: amount,
     acceptanceDay: acceptanceDay,
     expiresAt: expiresAt,
     borrower: borrower
@@ -171,8 +194,8 @@ export circuit pledge(lender: Bytes<32>): Bytes<32> {
   // 2. The tag authority signed exactly these fields, for this registry.
   assert(!isIdentity(tagAuthority), "Tag authority key is the identity point");
   Schnorr_schnorrVerify<1>(
-    attestationMessage(kernel.self().bytes, att.tag, att.invoiceCommit, att.acceptanceDay, att.expiresAt,
-                       att.borrower),
+    attestationMessage(kernel.self().bytes, att.tag, att.invoiceCommit, att.amount, att.acceptanceDay,
+                       att.expiresAt, att.borrower),
     att.signature,
     tagAuthority);
 
@@ -195,7 +218,7 @@ export circuit pledge(lender: Bytes<32>): Bytes<32> {
   tags.insert(tag);
 
   // 7. Record a note only the lender of record can later release.
-  const note = disclose(noteCommitment(att.tag, lender, att.invoiceCommit, getNoteSalt()));
+  const note = disclose(noteCommitment(att.tag, lender, att.invoiceCommit, att.amount, getNoteSalt()));
   notes.insert(note);
   pledgeCount.increment(1);
   return note;
@@ -205,8 +228,8 @@ export circuit pledge(lender: Bytes<32>): Bytes<32> {
 // `tags`; only an unlinkable nullifier is published.
 export circuit release(): [] {
   const sk = localSecretKey();
-  const [tag, invoiceCommit, salt] = getNoteOpening();
-  const note = noteCommitment(tag, lenderKey(sk), invoiceCommit, salt);
+  const [tag, invoiceCommit, amount, salt] = getNoteOpening();
+  const note = noteCommitment(tag, lenderKey(sk), invoiceCommit, amount, salt);
 
   const notePath = getNotePath();
   assert(notePath.leaf == note, "Note path does not match the note opening");
@@ -222,8 +245,8 @@ export circuit release(): [] {
 // the note commitment from its own secret, so no other party can decide on its behalf.
 circuit decideOnOwnNote(): [Bytes<32>, Bytes<32>] {
   const sk = localSecretKey();
-  const [tag, invoiceCommit, salt] = getNoteOpening();
-  const note = noteCommitment(tag, lenderKey(sk), invoiceCommit, salt);
+  const [tag, invoiceCommit, amount, salt] = getNoteOpening();
+  const note = noteCommitment(tag, lenderKey(sk), invoiceCommit, amount, salt);
 
   const notePath = getNotePath();
   assert(notePath.leaf == note, "Note path does not match the note opening");
