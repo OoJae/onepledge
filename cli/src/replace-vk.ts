@@ -108,31 +108,76 @@ if (same(before, committed)) {
 
 // The signing key for the current authority. For a 1-of-1 this is the deployer's key, sampled at
 // deploy time and held only in the encrypted private-state store.
-const signingKey = await providers.privateStateProvider.getSigningKey(record.contractAddress);
-if (!signingKey) {
-  console.error(
-    `No maintenance signing key for ${record.contractAddress} in the private-state store. ` +
-      'Without it this deployment cannot be maintained at all.',
-  );
-  await ctx.wallet.stop();
-  process.exit(1);
-}
-
 const authority = await readAuthority(providers, record.contractAddress);
 log(`Authority ${authority.summary}: ${authority.committee.map(shortKey).join(' ')}`);
-if (authority.threshold !== 1 || authority.committee.length !== 1) {
-  console.error(
-    `This script signs with the single key in the private-state store, but the authority is ` +
-      `${authority.summary}. Use a script that collects ${authority.threshold} signatures.`,
-  );
-  await ctx.wallet.stop();
-  process.exit(1);
-}
 
-/** One maintenance transaction, signed by the lone authority key, against a freshly read counter. */
+/**
+ * Where the signatures come from, which depends on what the authority is.
+ *
+ * A 1-of-1 is the deployer's key, sampled at deploy time and living only in the encrypted
+ * private-state store. Above that, midnight-js cannot help at all — it builds exactly one signature
+ * at index 0 — so the keys come from the backup `install-committee.ts` wrote, and each is matched to
+ * its seat by verifying key rather than by position in the file. Matching by position would be a
+ * silent way to sign at the wrong index, which is an invalid update rather than a wrong one, but
+ * still a wasted irreversible-looking failure on a live contract.
+ *
+ * In a real 2-of-3 these keys sit on three machines and the signatures are collected and combined;
+ * `committee.ts` is written for that. This reads one file because in this demo one party holds all
+ * three, which is a fact about the custody and not about the mechanism.
+ */
+const signers = await (async (): Promise<{ index: number; signingKey: string }[]> => {
+  if (authority.threshold === 1 && authority.committee.length === 1) {
+    const key = await providers.privateStateProvider.getSigningKey(record.contractAddress);
+    if (!key) {
+      console.error(
+        `No maintenance signing key for ${record.contractAddress} in the private-state store. ` +
+          'Without it this deployment cannot be maintained at all.',
+      );
+      await ctx.wallet.stop();
+      process.exit(1);
+    }
+    return [{ index: 0, signingKey: key }];
+  }
+
+  const keysPath = process.env.COMMITTEE_KEYS?.trim();
+  if (!keysPath) {
+    console.error(
+      `The authority is ${authority.summary}, so this needs ${authority.threshold} signatures. Set ` +
+        'COMMITTEE_KEYS to the backup install-committee.ts wrote.',
+    );
+    await ctx.wallet.stop();
+    process.exit(1);
+  }
+  const backup = JSON.parse(fs.readFileSync(path.resolve(keysPath), 'utf8')) as {
+    contractAddress?: string;
+    keys: { signingKey: string; verifyingKey: string }[];
+  };
+  if (backup.contractAddress && backup.contractAddress !== record.contractAddress) {
+    console.error(`${keysPath} holds keys for ${backup.contractAddress}, not ${record.contractAddress}.`);
+    await ctx.wallet.stop();
+    process.exit(1);
+  }
+  const seated = backup.keys
+    .map((k) => ({ index: authority.committee.indexOf(k.verifyingKey as never), signingKey: k.signingKey }))
+    .filter((k) => k.index >= 0);
+  if (seated.length < authority.threshold) {
+    console.error(
+      `${keysPath} holds ${seated.length} key(s) that sit in the on-chain committee, but ` +
+        `${authority.threshold} are needed. The contract cannot be maintained with these keys.`,
+    );
+    await ctx.wallet.stop();
+    process.exit(1);
+  }
+  // Threshold-many, in seat order, so the log reads the same way twice running.
+  const chosen = seated.sort((a, b) => a.index - b.index).slice(0, authority.threshold);
+  log(`Signing with committee seats ${chosen.map((c) => c.index).join(', ')} from ${keysPath}`);
+  return chosen;
+})();
+
+/** One maintenance transaction, signed by whatever the authority requires, against a fresh counter. */
 const apply = async (label: string, instruction: () => ReturnType<typeof removeVerifierKey>) => {
   const current = await readAuthority(providers, record.contractAddress);
-  const update = signUpdate(buildUpdate(record.contractAddress, [instruction()], current.counter), [{ index: 0, signingKey }], {
+  const update = signUpdate(buildUpdate(record.contractAddress, [instruction()], current.counter), signers, {
     threshold: current.threshold,
     committeeSize: current.committee.length,
   });

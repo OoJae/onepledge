@@ -192,7 +192,20 @@ const writeBackup = (keys: { index: number; signingKey: SigningKey; verifyingKey
 const providers = await (async () => {
   const ctx = await startWallet(await walletSeed(network), network);
   log('Waiting for wallet sync...');
-  const state = await ctx.wallet.waitForSyncedState();
+  // Preprod closes the socket during sync often enough to matter. Nothing has been generated or
+  // submitted at this point, so retrying costs nothing and failing here would only mean the operator
+  // has to re-read the consequences and retype the confirmations.
+  const state = await (async () => {
+    for (let attempt = 1; ; attempt++) {
+      try {
+        return await ctx.wallet.waitForSyncedState();
+      } catch (e) {
+        if (attempt >= 6) throw e;
+        log(`wallet sync failed; retrying in 20s (attempt ${attempt} of 6)...`);
+        await new Promise((r) => setTimeout(r, 20_000));
+      }
+    }
+  })();
   log(syncSummary(state));
   const { night, dust } = balances(state);
   log(`NIGHT=${night} DUST=${dust}`);
@@ -252,9 +265,11 @@ try {
   const newCommittee = committeeFromSigningKeys(newSigningKeys);
   log(`Prospective committee (${THRESHOLD} of ${COMMITTEE_SIZE}): ${newCommittee.map(shortKey).join(' ')}`);
 
-  const rehearsalSigners = newSigningKeys
-    .slice(0, THRESHOLD)
-    .map((signingKey, index) => ({ index, signingKey }));
+  // EVERY seat, not threshold-many. The gate's whole job is "prove you hold what you are about to
+  // install", and signing with only the first two would leave the third key written into the backup
+  // and into the committee without anything ever having checked that it signs. Threshold-many is
+  // what the chain requires; all of them is what this check is for.
+  const rehearsalSigners = newSigningKeys.map((signingKey, index) => ({ index, signingKey }));
   // An update shaped exactly like the next real one: counter current + 1 is what the authority's
   // counter will be once the install lands, so this is the update a future committee would build.
   // It is signed and verified, never submitted.
@@ -271,7 +286,13 @@ try {
         '\n  Installing it would leave the contract permanently unmaintainable.',
     );
   }
-  log(`Pre-flight: ${proof.verified} of ${COMMITTEE_SIZE} keys produce signatures that verify against the new committee.`);
+  if (proof.verified !== COMMITTEE_SIZE) {
+    die(
+      `only ${proof.verified} of ${COMMITTEE_SIZE} generated keys produce a verifying signature. ` +
+        'Every seat must be proven before any of them is installed.',
+    );
+  }
+  log(`Pre-flight: all ${proof.verified} of ${COMMITTEE_SIZE} keys produce signatures that verify against the new committee.`);
 
   // -------------------------------------------------------------------------
   // Back up the keys. Before submitting, and fatal if it fails.
