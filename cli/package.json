@@ -18,7 +18,8 @@
     "install:committee": "npx -y node@22 --import tsx src/install-committee.ts",
     "render:deployment": "node --import tsx src/render-deployment.ts",
     "mint:attestations": "node --import tsx src/mint-demo-attestations.ts",
-    "replace:vk": "npx -y node@22 --import tsx src/replace-vk.ts"
+    "replace:vk": "npx -y node@22 --import tsx src/replace-vk.ts",
+    "verify:f70": "npx -y node@22 --import tsx src/verify-f70.ts"
   },
   "dependencies": {
     "@onepledge/contract": "*",

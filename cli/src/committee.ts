@@ -249,7 +249,9 @@ export const committeeFromSigningKeys = (signingKeys: readonly SigningKey[]): Si
  *
  * Measured on the local devnet by `rehearse-committee.ts`: the ledger increments the authority's
  * counter on EVERY applied maintenance update, not only on a `ReplaceAuthority`. One run went
- * 0 (deployed) -> 1 (ReplaceAuthority) -> 2 (VerifierKeyRemove) -> 3 (VerifierKeyInsert). So
+ * 0 (deployed) -> 1 (ReplaceAuthority) -> 2 (VerifierKeyRemove) -> 3 (VerifierKeyInsert), and the
+ * F70 repair on Preprod went 0 -> 1 (VerifierKeyRemove) -> 2 (VerifierKeyInsert) with no
+ * `ReplaceAuthority` anywhere in it, which confirms the same on a public network. So
  * "current + 1" here is the same value the ledger would have reached on its own, and callers must
  * always re-read the authority with `readAuthority` immediately before building each update rather
  * than keeping a counter in a variable across two submissions.

@@ -251,6 +251,30 @@
       "at": "2026-10-15T14:56:47.105Z",
       "proveSeconds": 3.3,
       "totalSeconds": 49.1
+    },
+    {
+      "label": "Remove the proveBorrowingBase verifier key",
+      "circuit": "maintenance",
+      "txId": "00b3511931a91624e6e20b23b8131c58a47e4c418031f5adba7ec8097e0f97235a",
+      "txHash": "976490c47a181c05890ab00830951178a2e5821d7720fd979d5da7a6efa3e0b8",
+      "blockHeight": 2994328,
+      "outcome": "accepted: SucceedEntirely",
+      "at": "2026-10-15T17:03:43.589Z"
+    },
+    {
+      "label": "Insert the fixed proveBorrowingBase verifier key",
+      "circuit": "maintenance",
+      "txId": "00c785165639f7ce51698fe5bc6255dc75c1f649cb13b996ca3bea50ab2ec7c644",
+      "txHash": "c764f5466b14259379a46da7ca8a0deea8f4ac0a9b43bdd5ed52a724189c0be3",
+      "blockHeight": 2994333,
+      "outcome": "accepted: SucceedEntirely",
+      "at": "2026-10-15T17:04:14.146Z"
+    },
+    {
+      "label": "Why those two updates exist",
+      "circuit": "note",
+      "outcome": "An adversarial review of the submission deck found that proveBorrowingBase compared the four pool items\u2019 note commitments rather than their tags, so one receivable pledged, declined and pledged again to the same lender could be counted twice \u2014 published as F70. Only that circuit changed, so only its verifier key did, and the contract maintenance authority replaced it in place rather than this address being abandoned for a redeploy. The draw at block 2993004 above was proven under the old circuit; its pool was four genuinely distinct receivables, so it was sound in fact but not guaranteed sound, and it is left here rather than quietly removed.",
+      "at": "2026-10-15T17:04:15.684Z"
     }
   ]
 }

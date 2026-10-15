@@ -40,7 +40,7 @@ import {
   verifyUpdateSignatures,
 } from './committee.js';
 import { selectNetwork } from './config.js';
-import { configureProviders, readDeployment, zkConfigPath } from './providers.js';
+import { configureProviders, readDeployment, writeDeployment, zkConfigPath } from './providers.js';
 import { startWallet, walletSeed } from './wallet.js';
 
 const network = selectNetwork();
@@ -145,7 +145,20 @@ const apply = async (label: string, instruction: () => ReturnType<typeof removeV
   }
   const tx = await submitUpdate(providers, update);
   const data = tx as { txId?: string; status?: string; txHash?: string; blockHeight?: number };
-  log(`${label}: ${data.status ?? 'submitted'} (tx ${data.txId ?? '?'}, block ${data.blockHeight ?? '?'})`);
+  log(`${label}: ${data.status ?? 'submitted'} (tx hash ${data.txHash ?? '?'}, block ${data.blockHeight ?? '?'})`);
+  // Record it where the README table is generated from. A maintenance update changes what the
+  // deployed contract *is*, so leaving it out of the record would make the published history of this
+  // address quietly incomplete — and the table claims to be generated, never typed by hand.
+  record.events.push({
+    label: `${label[0].toUpperCase()}${label.slice(1)}`,
+    circuit: 'maintenance',
+    txId: data.txId,
+    txHash: data.txHash,
+    blockHeight: data.blockHeight,
+    outcome: `accepted: ${data.status ?? 'submitted'}`,
+    at: new Date().toISOString(),
+  });
+  writeDeployment(network, record);
 };
 
 await apply(`remove ${circuit}`, () => removeVerifierKey(circuit));

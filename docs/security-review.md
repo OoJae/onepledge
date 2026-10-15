@@ -53,11 +53,21 @@ verifier key changed and the other eight stayed byte-identical.
 **How it reached the live contract, and how it was repaired.** The hole was deployed. Rather than
 redeploy and abandon an address that the recorded scenario, the published attestations and the
 README table all point at, the single changed verifier key was replaced in place through the
-contract maintenance authority — a `VerifierKeyRemove` followed by a `VerifierKeyInsert`, each a
-signed maintenance update, rehearsed end to end on a local devnet first. The draw proven at block
-2,993,004 was made under the old circuit; its pool was four genuinely distinct receivables, so that
-proof was sound in fact, but it was not *guaranteed* sound, and it is left on chain and described
-here rather than quietly forgotten.
+contract maintenance authority — a `VerifierKeyRemove` at block 2,994,328 followed by a
+`VerifierKeyInsert` at block 2,994,333, each a signed maintenance update, rehearsed end to end on a
+local devnet first. The authority's counter went 0 → 1 → 2 across the two, confirming on a public
+network what the rehearsal measured: the ledger bumps it on every applied update, not only on an
+authority replacement. The draw proven at block 2,993,004 was made under the old circuit; its pool
+was four genuinely distinct receivables, so that proof was sound in fact, but it was not
+*guaranteed* sound, and it is left on chain and described here rather than quietly forgotten.
+
+**The repair was then tested on the deployment itself**, because a simulator cannot show that the
+key now on chain verifies the repaired circuit. `npm run verify:f70 --workspace cli` has lender A
+decline one of its own notes, has the borrower pledge that same invoice to the same lender again —
+which is precisely the state the hole fed on — and then offers a pool holding both notes. The
+registry refuses it, and refuses it before a proof is built, so the attack never reaches a node.
+A clean draw over four genuinely distinct receivables is then proven and accepted, which is the
+transaction that shows the swapped verifier key works. Both outcomes are in the deployment table.
 
 **Regression tests** ([`registry.test.ts`](../contract/src/test/registry.test.ts)): the attack
 itself — pledge, decline, re-pledge to the same lender, then a pool counting both notes — is
