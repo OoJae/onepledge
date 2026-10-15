@@ -39,7 +39,7 @@ closed and which it did not.
 ## Live on Midnight Preprod
 
 <!-- deployment:start -->
-**Registry v4** · contract [`ce3030ddcdc21a9d0d2289335dccff42f99068d7c32673589669874b1e0c8e71`](https://preprod.midnightexplorer.com/contracts/ce3030ddcdc21a9d0d2289335dccff42f99068d7c32673589669874b1e0c8e71) · deployed 2026-10-15 in block 2992668 · upgrade key: 1-of-1 deployer key
+**Registry v4** · contract [`ce3030ddcdc21a9d0d2289335dccff42f99068d7c32673589669874b1e0c8e71`](https://preprod.midnightexplorer.com/contracts/ce3030ddcdc21a9d0d2289335dccff42f99068d7c32673589669874b1e0c8e71) · deployed 2026-10-15 in block 2992668 · upgrade key: 2-of-3 committee, all keys deployer-held
 
 | Step | Circuit | Transaction | Block | Proved in | Finalized after |
 |---|---|---|---|---|---|
@@ -72,6 +72,7 @@ closed and which it did not.
 | Borrower pledges the freed invoice 3 back to lender A | `pledge` | [`6c2f10d6df7c…`](https://preprod.midnightexplorer.com/transactions/6c2f10d6df7cc33c62ef6c430dce42e51e28fa43985f61c8dd52faff3fd4b19e) | 2994448 |  |  |
 | Lender A counts invoice 3 twice in one borrowing base | `proveBorrowingBase` | none: rejected before proving: A receivable appears twice in the pool (claimed 20300000 grosz against 16200000 genuinely held) | | | |
 | Lender A proves 24000000 grosz against the repaired circuit | `proveBorrowingBase` | [`854f89afb805…`](https://preprod.midnightexplorer.com/transactions/854f89afb80582eaf892e0af1f3a684f2e50701d392827af248c54f206f042fd) | 2994458 |  |  |
+| Replace the 1-of-1 upgrade key with a 2-of-3 committee | `maintenance` | none: accepted: SucceedEntirely | | | |
 
 **One orphaned pledge on chain.** An earlier run of the scenario lost its connection mid-way and did not persist its note salts, so nobody holds the opening for that note: it can never be accepted, declined or released. It is counted by pledgeCount and acceptCount and by one tag in the public set, which is why those run one ahead of the steps above. It is listed here rather than quietly dropped. The scenario now persists its salts, so a dropped connection is resumed instead of abandoned. (transaction [`d758553c19d0…`](https://preprod.midnightexplorer.com/transactions/d758553c19d06d979e9fb7981c68fa3f0b20db89d5845330e15d38044eb7a225), block 2992840)
 
@@ -161,7 +162,7 @@ These properties are enforced by [privacy tests](contract/src/test/privacy.test.
 | Can a spelling change dodge it | No | Yes | No: one canonical KSeF number, keyed tag |
 | Can outsiders enumerate who financed what | No | Yes | No: tags need the authority's key |
 | Is "one pledge per invoice" checked by code anyone can verify | No: trust the operator's database | Yes | Yes: in-circuit, verifier keys on chain |
-| What is still trusted | The operator, for everything | Nothing, but it leaks | The tag authority, to tag each invoice once and attest the right amount (threshold tags in Wave 3); the 1-of-1 Midnight maintenance key, which can replace verifier keys; and, in this demo only, the deployer who holds all three registrar seats |
+| What is still trusted | The operator, for everything | Nothing, but it leaks | The tag authority, to tag each invoice once and attest the right amount (threshold tags in Wave 3); the Midnight maintenance authority, which can replace verifier keys and is 2-of-3; and, in this demo only, the deployer who holds every seat on both committees |
 
 Midnight is what makes the right-hand column possible:
 - **Private state with public verification.** The borrower's attestation, secret and the lender's identity stay in local private state; only what the circuit discloses reaches the public ledger.
@@ -211,12 +212,26 @@ the path locally, so a party's private state is just its secret plus whatever it
 5. **Finalization:** the indexer (`indexerPublicDataProvider`) reports it and exposes the new ledger state.
 6. **Storage:** private state is kept encrypted with `levelPrivateStateProvider`, scoped per contract address.
 
-**Upgrade authority, and what the committee is not.** Midnight contracts have a *maintenance authority* that
-can insert or remove verifier keys. For this deployment it is still a 1-of-1 key held by the deployer,
-recorded as `maintenanceAuthority` in `deployments/preprod.json`. Wave 2's 2-of-3 committee is the registrar
-role **inside** the contract and has no power over the maintenance key; these are two different things and
-the roadmap promised the second one, not the first. A maintenance committee, then a frozen v1.0 deployment,
-is Wave 3 ([F09](docs/security-review.md)).
+**Two different committees, and they are not the same thing.** Midnight contracts have a *maintenance
+authority* that can insert or remove verifier keys; separately, this contract has a *registrar committee*
+inside it that admits lenders. Wave 2 shipped both as 2-of-3, and the registrar committee has no power over
+the maintenance authority.
+
+The maintenance authority was the deployer's 1-of-1 until it was replaced on chain this wave. It is now
+2-of-3, recorded as `maintenanceAuthority` in `deployments/preprod.json` with its three verifying keys, and
+`npm run verify:onchain` asserts each seat is the recorded key and that the chain holds no seat beyond them.
+Installing it is one way, which is why `cli/src/rehearse-committee.ts` runs the whole flow on a local devnet
+first — deploy, install, then remove and re-insert a verifier key with two of the three keys, and prove the
+node refuses a single signature.
+
+It matters that midnight-js 4.1.1 cannot drive this: `submitReplaceAuthorityTx`, `submitInsertVerifierKeyTx`
+and `submitRemoveVerifierKeyTx` each produce exactly one signature at index 0, so above a threshold of one
+they can authorise nothing. `cli/src/committee.ts` is the only tool that can maintain this contract now, and
+it has to keep working for the life of the deployment.
+
+**All three seats are deployer-held**, like the registrar committee's. What is distributed is the mechanism,
+not the custody; the keys live in one backup file written by `install-committee.ts`. Splitting them across
+custodians, and then freezing a v1.0 deployment outright, is Wave 3 ([F09](docs/security-review.md)).
 
 ## Architecture
 
@@ -508,11 +523,13 @@ Said plainly, because a judge finding one of these unstated is worse than the li
   policy, not contract-enforced.
 - **Metadata.** DUST fee spends are shielded and do not link parties. What does link activity is network-level:
   one client submitting several transactions to a shared RPC node, indexer subscriptions, and timing.
-- **Maintenance key.** Still 1-of-1 and deployer-held. It is not the registrar committee (see
+- **Maintenance authority.** Now 2-of-3 on chain, but all three keys are deployer-held and live in one
+  backup file, so the custody is still one party's. It is not the registrar committee (see
   [Midnight integration](#midnight-integration)).
-- **Wave 2's new circuits have not had a security review of their own.** The published review is Wave 1's; it
-  records which of its findings Wave 2 closed, but the committee, the borrowing base and the delivery path have
-  not been through an adversarial pass. An external review is planned for Wave 3.
+- **Wave 2's new circuits were reviewed adversarially, but not swept.** That review is how
+  [F70](docs/security-review.md) was found and fixed on a live contract. It was not the 88-finding
+  structured sweep Wave 1 got, and nobody outside the project has looked at any of it. External review
+  is Wave 3.
 
 ## Business model
 
@@ -570,7 +587,10 @@ much easier first sale than "join our consortium".
 
 **Promised for Wave 2 and not delivered:**
 
-- a 2-of-3 **upgrade** committee. The registrar committee landed; the Midnight maintenance key is still 1-of-1.
+- **a 2-of-3 upgrade committee whose keys are in three pairs of hands.** The committee itself landed: the
+  maintenance authority on Preprod is 2-of-3, rehearsed on a local devnet first. But all three keys were
+  generated on one machine into one file, so in practice it is still a 1-of-1 until they are split between
+  custodians. That is an operational step, not a code one, and it has not been taken.
 - a KSeF adapter that has actually talked to KSeF. The client exists and is tested against fixtures, but it
   has never called the test environment and is not wired into the attestation flow, so demo invoices are
   still synthetic.

@@ -100,11 +100,17 @@ log(`Contract ${record.contractAddress}`);
 log(`Circuit  ${circuit}`);
 log(`On chain ${before ? `${before.length} bytes` : '(no verifier key)'}`);
 log(`Committed ${committed.length} bytes`);
-if (same(before, committed)) {
-  log('The on-chain key already equals the committed one. Nothing to do.');
+// FORCE_ROUNDTRIP removes and re-inserts a key that already matches. It changes nothing about the
+// contract, which is the point: it is how a threshold authority is exercised on a live deployment
+// without risking anything, by doing a real maintenance update whose only visible effect is the
+// authority's counter moving. `rehearse-committee.ts` does the same on the devnet.
+const roundTrip = process.env.FORCE_ROUNDTRIP === '1';
+if (same(before, committed) && !roundTrip) {
+  log('The on-chain key already equals the committed one. Nothing to do. (FORCE_ROUNDTRIP=1 to exercise the authority anyway.)');
   await ctx.wallet.stop();
   process.exit(0);
 }
+if (roundTrip) log('FORCE_ROUNDTRIP=1: removing and re-inserting a key that already matches, to exercise the authority.');
 
 // The signing key for the current authority. For a 1-of-1 this is the deployer's key, sampled at
 // deploy time and held only in the encrypted private-state store.

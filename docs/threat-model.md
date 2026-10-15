@@ -4,7 +4,7 @@
 
 | Asset | Property |
 |---|---|
-| "One pledge per receivable" | No invoice is pledged twice in a registry, whoever colludes, as long as the tag authority is honest and the 1-of-1 maintenance key does not replace verifier keys. |
+| "One pledge per receivable" | No invoice is pledged twice in a registry, whoever colludes, as long as the tag authority is honest and the maintenance authority does not replace verifier keys. |
 | A lender's book | Which invoices a lender financed, for whom, and on what terms. |
 | How large a lender's book is | A borrowing-base draw publishes a floor the lender chose to claim, and nothing else about the money. |
 | Invoice contents | Amount, debtor, due date. The amount is now attested and bound into the note commitment, and still never published. |
@@ -19,13 +19,15 @@
 | Registrar committee | Three registrar secrets, 2-of-3 | Admitting real lenders and rotating itself | Pledges, tags, decisions or draws |
 | Borrower | Borrower secret, attestations, note salts | Nothing | Everything is checked in-circuit |
 | Lender | Lender secret, invoice openings it receives | Nothing | — |
-| Deployer | Contract maintenance key (1-of-1, disclosed) **and all three registrar seats in this demo** | Not replacing verifier keys | Nothing else |
+| Deployer | Every seat on both committees in this demo: all three maintenance keys (2-of-3, disclosed) and all three registrar seats | Not replacing verifier keys | Nothing else |
 | Proof server | Witnesses while proving | Run locally by each party | A remote proof server would see private inputs |
 
 The 2-of-3 registrar committee is enforced on chain, but in this demo the deployer holds all three seats
 (`deployments/preprod.json` records them and says so). The demo distributes the mechanism, not the custody.
-The Midnight *maintenance authority* — the key that can insert or remove verifier keys — is a separate thing
-and is still 1-of-1; the registrar committee has no power over it.
+The Midnight *maintenance authority* — the keys that can insert or remove verifier keys — is a separate
+thing, and the registrar committee has no power over it. It was the deployer's 1-of-1 until this wave and is
+now also 2-of-3, with its three verifying keys recorded and asserted by `verify:onchain`. The same caveat
+applies twice over: both committees are 2-of-3 on chain and one party holds all six keys.
 
 ## Adversaries considered
 

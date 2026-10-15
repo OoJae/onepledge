@@ -65,8 +65,9 @@ value in each circuit's public transcript. CI runs three jobs: the unit and brow
 proof against a proof server, and a local-devnet deploy-and-run of the whole scenario. A wallet-connected
 desk submits a real pledge from the browser.
 
-Promised for Wave 2 and not delivered: the 2-of-3 **upgrade** committee (the registrar committee landed; the
-Midnight maintenance key is still 1-of-1); a KSeF adapter that has actually called KSeF (a read-only client
+Promised for Wave 2 and not delivered: an upgrade committee whose keys are in three pairs of hands (the
+2-of-3 itself landed on chain, but all three keys were generated on one machine, so in practice it is a
+1-of-1 until they are split); a KSeF adapter that has actually called KSeF (a read-only client
 exists but has only ever run against fixtures, so demo invoices stay synthetic); a racing-transaction test;
 and interviews with factors. Limitations are listed in full below.
 
@@ -119,10 +120,11 @@ Nothing here is hidden in a footnote; each item is also in the README and the th
 - The registrar tree holds 16 leaves and each committee spends three, so the committee can be rotated four
   times and the fifth rotation fails. Raising the depth is a recompile and a new deployment.
 - Every membership proof discloses the historic root it used, and a stale root narrows timing.
-- The Midnight maintenance key, which can replace verifier keys, is still 1-of-1 and deployer-held. It is a
-  different thing from the registrar committee.
-- Wave 2's new circuits have not had an adversarial review of their own. The published review is Wave 1's; it
-  records which of its findings Wave 2 closed and which it did not. External review is planned for Wave 3.
+- The Midnight maintenance authority, which can replace verifier keys, is now 2-of-3 on chain, but all three
+  keys are deployer-held and sit in one file. It is a different thing from the registrar committee, and the
+  same caveat applies to both: the mechanism is distributed, the custody is not.
+- Wave 2's new circuits were reviewed adversarially, which is how F70 was found and fixed, but not by the
+  same 88-finding sweep Wave 1 got and not by anyone outside the project. External review is Wave 3.
 - There is still no racing-transaction test, and no test of the CLI's own code paths.
 
 ## What's next (Wave 3)
