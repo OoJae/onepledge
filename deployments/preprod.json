@@ -273,8 +273,50 @@
     {
       "label": "Why those two updates exist",
       "circuit": "note",
-      "outcome": "An adversarial review of the submission deck found that proveBorrowingBase compared the four pool items\u2019 note commitments rather than their tags, so one receivable pledged, declined and pledged again to the same lender could be counted twice \u2014 published as F70. Only that circuit changed, so only its verifier key did, and the contract maintenance authority replaced it in place rather than this address being abandoned for a redeploy. The draw at block 2993004 above was proven under the old circuit; its pool was four genuinely distinct receivables, so it was sound in fact but not guaranteed sound, and it is left here rather than quietly removed.",
+      "outcome": "An adversarial review of the submission deck found that proveBorrowingBase compared the four pool items’ note commitments rather than their tags, so one receivable pledged, declined and pledged again to the same lender could be counted twice — published as F70. Only that circuit changed, so only its verifier key did, and the contract maintenance authority replaced it in place rather than this address being abandoned for a redeploy. The draw at block 2993004 above was proven under the old circuit; its pool was four genuinely distinct receivables, so it was sound in fact but not guaranteed sound, and it is left here rather than quietly removed.",
       "at": "2026-10-15T17:04:15.684Z"
+    },
+    {
+      "label": "Borrower pledges invoice 5 to lender A",
+      "circuit": "pledge",
+      "txId": "002f7d6238734f8f115af0ed4c3445c8c1cea6f90b3567216f58f6dd3d03c51505",
+      "txHash": "c6ab097fe52d356c6825a1a7214e8c35a2e9be7182080181744aa44c699cf2ae",
+      "blockHeight": 2994429,
+      "outcome": "accepted",
+      "at": "2026-10-15T17:13:58.903Z"
+    },
+    {
+      "label": "Lender A declines invoice 3, keeping its opening",
+      "circuit": "declinePledge",
+      "txId": "00a925febd9d68b9a8d4d8a8f0197b2696c39a50c43f880f72da268afcf7488aac",
+      "txHash": "8400777e4d938ff2610bfb1040b6f7698eaf0bbbbb853f5cecf24b8be23c88f7",
+      "blockHeight": 2994436,
+      "outcome": "accepted",
+      "at": "2026-10-15T17:14:56.385Z"
+    },
+    {
+      "label": "Borrower pledges the freed invoice 3 back to lender A",
+      "circuit": "pledge",
+      "txId": "008853fb05c5cf774af32c654323694a1cdfc0ca7a0d245f66bd6df5faaba9fce7",
+      "txHash": "6c2f10d6df7cc33c62ef6c430dce42e51e28fa43985f61c8dd52faff3fd4b19e",
+      "blockHeight": 2994448,
+      "outcome": "accepted",
+      "at": "2026-10-15T17:15:53.828Z"
+    },
+    {
+      "label": "Lender A counts invoice 3 twice in one borrowing base",
+      "circuit": "proveBorrowingBase",
+      "outcome": "rejected before proving: A receivable appears twice in the pool (claimed 20300000 grosz against 16200000 genuinely held)",
+      "at": "2026-10-15T17:15:54.816Z"
+    },
+    {
+      "label": "Lender A proves 24000000 grosz against the repaired circuit",
+      "circuit": "proveBorrowingBase",
+      "txId": "00bef5f7fb970cea7d0c7990e5cc15165996ffb8b10466062133aab196d78c5fe6",
+      "txHash": "854f89afb80582eaf892e0af1f3a684f2e50701d392827af248c54f206f042fd",
+      "blockHeight": 2994458,
+      "outcome": "accepted",
+      "at": "2026-10-15T17:16:52.196Z"
     }
   ]
 }

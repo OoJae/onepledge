@@ -315,15 +315,19 @@
   <h2>We attacked it before anyone else could.</h2>
   <div class="grid3" style="margin-bottom:18px">
     <div class="card" style="padding:24px"><div class="stat">272</div><div class="statlabel">tests across two suites — 189 on the compiled circuits, 83 on the attester: adversarial witnesses, forgery, privacy allowlists, KSeF format, sealed delivery</div></div>
-    <div class="card" style="padding:24px"><div class="stat">88</div><div class="statlabel">findings from our own adversarial self-review, each challenged by a skeptic. It covered Wave 1; this wave's new circuits have not had a pass of their own</div></div>
-    <div class="card" style="padding:24px"><div class="stat">1</div><div class="statlabel">critical bug found by that review, fixed, and disclosed in full</div></div>
+    <div class="card" style="padding:24px"><div class="stat">88</div><div class="statlabel">findings from our own adversarial self-review in Wave 1, each challenged by a skeptic. This wave's circuits were reviewed the same way — that is how F70 was found</div></div>
+    <div class="card" style="padding:24px"><div class="stat">2</div><div class="statlabel">real bugs our own reviews found in our own code, both fixed and both published in full rather than quietly patched</div></div>
   </div>
   <div class="grid2">
     <div class="card sm fix">
-      <h3>F01: one attestation, 256 pledges</h3>
-      <p>v1 signed only 248 bits of the tag, so changing its last byte passed. The fix signs one SHA-256
-      digest of the whole attestation, bound to the registry and an expiry. A regression test flips every
-      byte.</p>
+      <h3>F70: one receivable counted twice</h3>
+      <p>The draw compared note commitments. Declining frees the tag but leaves the note, and the
+      decliner keeps its opening — so pledge, decline, pledge again gives one lender two notes for one
+      invoice. It proved <strong>20,300,000&nbsp;grosz against 16,200,000 held</strong>. The fix compares
+      the tags.</p>
+      <p>It was already deployed, and only that circuit's verifier key changed — so the maintenance
+      authority swapped it in place rather than abandoning the address. The attack was then re-run
+      against the live contract and refused, and a clean draw still proves.</p>
     </div>
     <div class="card sm">
       <h3>Honest limits</h3>
