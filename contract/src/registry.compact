@@ -45,6 +45,21 @@ export struct Attestation {
 
 // The exact byte string the tag authority signs (as one SHA-256 digest). Every field is
 // hashed whole, so no bit of any field can change without invalidating the signature.
+// What a borrowing-base draw records. The floor is public on purpose: it is the whole claim.
+export struct DrawRecord {
+  round: Bytes<32>;
+  floor: Uint<128>;
+}
+
+// One receivable in a borrowing-base pool: the opening of a note this lender is the lender of
+// record for. Same four fields as a release opening; named separately because a pool holds four.
+export struct PoolItem {
+  tag: Bytes<32>;
+  invoiceCommit: Bytes<32>;
+  amount: Uint<64>;
+  salt: Bytes<32>;
+}
+
 export struct AttestationBody {
   domain: Bytes<32>;
   registry: Bytes<32>;
@@ -56,8 +71,25 @@ export struct AttestationBody {
   borrower: Bytes<32>;
 }
 
-// Registrar: admits lenders. Identity comes from a witness secret, never ownPublicKey().
-export ledger registrar: Bytes<32>;
+// The registrar committee. Admitting a lender takes `threshold` of its members, and no approval
+// says which member gave it: a member proves it holds a committee leaf by Merkle path, so the only
+// thing published is the root everyone already knows. The alternative — a Set the circuit calls
+// member() on — would have to disclose the approver's key on every admission, which turns the
+// committee into a public log of who signs off on which lender.
+//
+// Leaves bind the epoch, so a rotation retires the previous committee's leaves without the tree
+// needing to delete anything (it cannot: it is append-only). An old leaf stays in an old historic
+// root, but the circuit computes the leaf it demands from the *current* epoch, so a retired member
+// has nothing to prove against.
+export ledger registrars: HistoricMerkleTree<4, Bytes<32>>;
+export ledger committeeEpoch: Counter;
+// Approvals required. Sealed: a committee that could lower its own threshold is a 1-of-3.
+export sealed ledger threshold: Uint<8>;
+// action -> the approval nullifiers gathered for it. Nested so one member cannot approve twice:
+// the nullifier is keyed on the member's secret, so it is both unlinkable and unforgeable.
+export ledger proposals: Map<Bytes<32>, Set<Bytes<32>>>;
+// Actions already carried out, so a used set of approvals cannot be replayed.
+export ledger executed: Set<Bytes<32>>;
 // The single tag authority for this registry version. Rotating it means a new deployment.
 export sealed ledger tagAuthority: JubjubPoint;
 // Acceptance-day window this deployment accepts, in days since 1970-01-01. The day is part of
@@ -85,25 +117,41 @@ export ledger releases: Set<Bytes<32>>;
 // in is the decision, and that has to be public: a declined receivable must visibly become free again.
 export ledger accepted: Set<Bytes<32>>;
 export ledger declined: Set<Bytes<32>>;
+// Borrowing-base draws: drawId -> the round and the floor that draw proved. A draw is the only
+// place a lender says anything about how much its book is worth, and it says exactly one thing:
+// at least this much. The drawId is unlinkable to the lender and to the receivables counted.
+export ledger draws: Map<Bytes<32>, DrawRecord>;
 export ledger pledgeCount: Counter;
 export ledger releaseCount: Counter;
 export ledger acceptCount: Counter;
 export ledger declineCount: Counter;
+export ledger drawCount: Counter;
 
 witness localSecretKey(): Bytes<32>;
 witness getAttestation(): Attestation;
 witness getLenderPath(): MerkleTreePath<10, Bytes<32>>;
+witness getRegistrarPath(): MerkleTreePath<4, Bytes<32>>;
 witness getNoteSalt(): Bytes<32>;
 witness getNoteOpening(): [Bytes<32>, Bytes<32>, Uint<64>, Bytes<32>];
 witness getNotePath(): MerkleTreePath<16, Bytes<32>>;
+witness getPool(): Vector<4, PoolItem>;
+witness getPoolPaths(): Vector<4, MerkleTreePath<16, Bytes<32>>>;
 
-constructor(authority: JubjubPoint, start: Uint<32>, end: Uint<32>) {
+// `committee` holds the three registrar key commitments (registrarKey(secret)), not the secrets, so
+// a deployer need not hold any of them. In this demo all three are the deployer's — said plainly in
+// the README and the threat model rather than dressed up as decentralisation.
+constructor(authority: JubjubPoint, start: Uint<32>, end: Uint<32>, committee: Vector<3, Bytes<32>>) {
   assert(start < end, "Empty acceptance window");
   assert(!isIdentity(authority), "Tag authority key is the identity point");
-  registrar = disclose(registrarKey(localSecretKey()));
+  assert(committee[0] != committee[1] && committee[1] != committee[2] && committee[0] != committee[2],
+         "Committee members must be distinct");
   tagAuthority = disclose(authority);
   windowStart = disclose(start);
   windowEnd = disclose(end);
+  threshold = 2;
+  registrars.insert(disclose(committeeLeaf(0, committee[0])));
+  registrars.insert(disclose(committeeLeaf(0, committee[1])));
+  registrars.insert(disclose(committeeLeaf(0, committee[2])));
 }
 
 pure circuit isIdentity(p: JubjubPoint): Boolean {
@@ -112,6 +160,63 @@ pure circuit isIdentity(p: JubjubPoint): Boolean {
 
 export pure circuit registrarKey(sk: Bytes<32>): Bytes<32> {
   return persistentHash<Vector<2, Bytes<32>>>([pad(32, "onepledge:registrar:v1"), sk]);
+}
+
+struct CommitteeLeaf {
+  domain: Bytes<32>;
+  epoch: Uint<64>;
+  member: Bytes<32>;
+}
+
+// A committee member's leaf for one epoch. Binding the epoch is what retires a rotated-out member
+// from an append-only tree.
+export pure circuit committeeLeaf(epoch: Uint<64>, member: Bytes<32>): Bytes<32> {
+  return persistentHash<CommitteeLeaf>(CommitteeLeaf {
+    domain: pad(32, "onepledge:committee:v1"),
+    epoch: epoch,
+    member: member
+  });
+}
+
+struct AdmitActionBody {
+  domain: Bytes<32>;
+  epoch: Uint<64>;
+  lender: Bytes<32>;
+  encryptionKey: Bytes<32>;
+}
+
+export pure circuit admitAction(epoch: Uint<64>, lender: Bytes<32>, encryptionKey: Bytes<32>): Bytes<32> {
+  return persistentHash<AdmitActionBody>(AdmitActionBody {
+    domain: pad(32, "onepledge:action:admit:v1"),
+    epoch: epoch,
+    lender: lender,
+    encryptionKey: encryptionKey
+  });
+}
+
+struct RotateActionBody {
+  domain: Bytes<32>;
+  epoch: Uint<64>;
+  member0: Bytes<32>;
+  member1: Bytes<32>;
+  member2: Bytes<32>;
+}
+
+export pure circuit rotateAction(epoch: Uint<64>, member0: Bytes<32>, member1: Bytes<32>,
+                                 member2: Bytes<32>): Bytes<32> {
+  return persistentHash<RotateActionBody>(RotateActionBody {
+    domain: pad(32, "onepledge:action:rotate:v1"),
+    epoch: epoch,
+    member0: member0,
+    member1: member1,
+    member2: member2
+  });
+}
+
+// One member's approval of one action. Keyed on the member's secret, so it is unforgeable, and
+// domain-separated from release and decision nullifiers so none of the three can ever collide.
+export pure circuit approvalNullifier(action: Bytes<32>, registrarSecret: Bytes<32>): Bytes<32> {
+  return persistentHash<Vector<3, Bytes<32>>>([pad(32, "onepledge:approval:v1"), action, registrarSecret]);
 }
 
 export pure circuit borrowerKey(sk: Bytes<32>): Bytes<32> {
@@ -154,6 +259,13 @@ export pure circuit releaseNullifier(note: Bytes<32>, lenderSecret: Bytes<32>): 
   return persistentHash<Vector<3, Bytes<32>>>([pad(32, "onepledge:release:v1"), note, lenderSecret]);
 }
 
+// Identifies one lender's borrowing-base draw for one round, without naming the lender. Two rounds
+// produce unlinkable ids; one round produces the same id twice, which is how a lender is held to one
+// draw per round.
+export pure circuit drawId(round: Bytes<32>, lenderSecret: Bytes<32>): Bytes<32> {
+  return persistentHash<Vector<3, Bytes<32>>>([pad(32, "onepledge:draw:v1"), round, lenderSecret]);
+}
+
 // The one-field message the tag authority signs: a SHA-256 digest of the whole body, reduced
 // to a Field. The digest keeps 248 of its 256 bits, which is fine for a hash output; v1's bug
 // was truncating the raw tag, not a digest of it.
@@ -178,16 +290,75 @@ export pure circuit schnorrChallenge(ann_x: Field, ann_y: Field, pk_x: Field, pk
   return Schnorr_schnorrChallenge1(ann_x, ann_y, pk_x, pk_y, msg);
 }
 
-// Registrar admits a lender by its key commitment (lenderKey(lenderSecret)).
-export circuit admitLender(lender: Bytes<32>, encryptionKey: Bytes<32>): [] {
-  assert(registrar == registrarKey(localSecretKey()), "Only the registrar can admit lenders");
+// --- Registrar committee ------------------------------------------------------------------------
+
+// One member records its approval of `action`. Shared by every approve circuit so the membership
+// proof and the double-approval check exist once.
+circuit recordApproval(action: Bytes<32>): [] {
+  const a = disclose(action);
+  assert(!executed.member(a), "Action already executed");
+
+  // Membership by Merkle path against the current epoch's leaf: the approver's key never leaves
+  // the circuit, so an approval cannot be attributed to a member.
+  const sk = localSecretKey();
+  const leaf = committeeLeaf(committeeEpoch, registrarKey(sk));
+  const path = getRegistrarPath();
+  assert(path.leaf == leaf, "Registrar path does not match this committee member");
+  assert(registrars.checkRoot(disclose(merkleTreePathRoot<4, Bytes<32>>(path))),
+         "Not a member of the registrar committee");
+
+  const nullifier = disclose(approvalNullifier(a, sk));
+  if (!proposals.member(a)) {
+    proposals.insertDefault(a);
+  }
+  assert(!proposals.lookup(a).member(nullifier), "Already approved by this committee member");
+  proposals.lookup(a).insert(nullifier);
+}
+
+// Consumes the approvals for `action`. Deliberately takes no witness: once `threshold` members have
+// approved, the authorisation is complete and who submits the execution is immaterial.
+circuit consumeApprovals(action: Bytes<32>): [] {
+  const a = disclose(action);
+  assert(!executed.member(a), "Action already executed");
+  assert(proposals.member(a), "No approvals recorded for this action");
+  assert(proposals.lookup(a).size() >= threshold as Uint<64>, "Below the registrar threshold");
+  executed.insert(a);
+  // The nullifiers have done their work; `executed` is what blocks a replay from here on.
+  proposals.remove(a);
+}
+
+// A committee member approves admitting a lender by its key commitment (lenderKey(lenderSecret)).
+// Both the lender key and its encryption key are public arguments, and they are bound into the
+// action, so the chain records exactly what was approved rather than an opaque hash.
+export circuit approveAdmit(lender: Bytes<32>, encryptionKey: Bytes<32>): [] {
+  assert(!lenderEncryptionKeys.member(disclose(lender)), "Lender already admitted");
+  recordApproval(admitAction(committeeEpoch, lender, encryptionKey));
+}
+
+export circuit executeAdmit(lender: Bytes<32>, encryptionKey: Bytes<32>): [] {
+  assert(!lenderEncryptionKeys.member(disclose(lender)), "Lender already admitted");
+  consumeApprovals(admitAction(committeeEpoch, lender, encryptionKey));
   lenders.insert(disclose(lender));
   lenderEncryptionKeys.insert(disclose(lender), disclose(encryptionKey));
 }
 
-export circuit rotateRegistrar(next: Bytes<32>): [] {
-  assert(registrar == registrarKey(localSecretKey()), "Only the registrar can rotate the registrar");
-  registrar = disclose(next);
+// A committee member approves replacing the whole committee. Two approvals are needed, which closes
+// F68 from the security review: a single registrar can no longer hand the role to a wrong key and
+// lock admissions. The action binds the current epoch, so a rotation also voids every pending
+// proposal — approvals gathered under the old committee must not carry into the new one.
+export circuit approveRotate(members: Vector<3, Bytes<32>>): [] {
+  recordApproval(rotateAction(committeeEpoch, members[0], members[1], members[2]));
+}
+
+export circuit executeRotate(members: Vector<3, Bytes<32>>): [] {
+  assert(members[0] != members[1] && members[1] != members[2] && members[0] != members[2],
+         "Committee members must be distinct");
+  consumeApprovals(rotateAction(committeeEpoch, members[0], members[1], members[2]));
+  const next = (committeeEpoch + 1) as Uint<64>;
+  committeeEpoch.increment(1);
+  registrars.insert(disclose(committeeLeaf(next, members[0])));
+  registrars.insert(disclose(committeeLeaf(next, members[1])));
+  registrars.insert(disclose(committeeLeaf(next, members[2])));
 }
 
 // Borrower pledges an attested receivable to an admitted lender.
@@ -289,4 +460,57 @@ export circuit declinePledge(): [] {
   declined.insert(decision);
   tags.remove(disclose(tag));
   declineCount.increment(1);
+}
+
+// --- Borrowing base -----------------------------------------------------------------------------
+//
+// A factor that finances receivables is itself financed, and its funding bank wants to know the
+// book behind a drawdown is real and large enough. Showing it means handing over the client list,
+// the invoices and the amounts — which is the same disclosure problem this registry exists to
+// avoid, one level up.
+//
+// So a lender proves instead: four receivables pledged to me, each one on this ledger, together
+// worth at least `floor`. The amounts stay private, which notes they are stays private, and the
+// prover is authorised structurally — it recomputes each note commitment from its own secret, so
+// only the lender of record for all four can produce the proof.
+//
+// The pool is fixed at four because a depth-16 path plus a note recompute costs about 4.8 MB of
+// prover key per receivable. Larger books accumulate instead: run a draw per round over a rolling
+// four, or raise N and pay for it. Documented in the README rather than hidden behind a constant.
+
+// Checks one pool item and returns its note commitment and amount, both undisclosed: the caller
+// needs the commitments only to prove the four are distinct, and the amount only to add it up.
+circuit checkPoolItem(lender: Bytes<32>, item: PoolItem,
+                      path: MerkleTreePath<16, Bytes<32>>): [Bytes<32>, Uint<64>] {
+  const note = noteCommitment(item.tag, lender, item.invoiceCommit, item.amount, item.salt);
+  assert(path.leaf == note, "Pool note path does not match its opening");
+  assert(notes.checkRoot(disclose(merkleTreePathRoot<16, Bytes<32>>(path))), "Unknown pool note");
+  return [note, item.amount];
+}
+
+export circuit proveBorrowingBase(round: Bytes<32>, floor: Uint<128>): [] {
+  const sk = localSecretKey();
+  const lender = lenderKey(sk);
+  const pool = getPool();
+  const paths = getPoolPaths();
+
+  const [note0, amount0] = checkPoolItem(lender, pool[0], paths[0]);
+  const [note1, amount1] = checkPoolItem(lender, pool[1], paths[1]);
+  const [note2, amount2] = checkPoolItem(lender, pool[2], paths[2]);
+  const [note3, amount3] = checkPoolItem(lender, pool[3], paths[3]);
+
+  // Four distinct receivables, not one counted four times. Comparing commitments does this without
+  // publishing anything; a nullifier per item would have worked too, and would have published four
+  // more values for an observer to correlate.
+  assert(note0 != note1 && note0 != note2 && note0 != note3, "A receivable appears twice in the pool");
+  assert(note1 != note2 && note1 != note3 && note2 != note3, "A receivable appears twice in the pool");
+
+  // Arithmetic widens rather than wrapping, so the sum cannot overflow into a passing total.
+  const total = amount0 + amount1 + amount2 + amount3;
+  assert((total as Uint<128>) >= floor, "Pool does not clear the floor");
+
+  const id = disclose(drawId(round, sk));
+  assert(!draws.member(id), "A borrowing base was already proven for this round");
+  draws.insert(id, DrawRecord { round: disclose(round), floor: disclose(floor) });
+  drawCount.increment(1);
 }

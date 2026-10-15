@@ -21,15 +21,21 @@ export interface SimulatorOptions {
   readonly address?: string;
   /** Block time in unix seconds. Defaults to the wall clock. */
   readonly time?: number;
+  /** The three registrar-committee secrets. Defaults to the deployer's secret plus two fresh ones,
+   *  so a test that does not care about the committee still has a quorum to call. */
+  readonly committee?: readonly Uint8Array[];
 }
 
 export class RegistrySimulator {
   readonly contract: Contract<OnePledgePrivateState, WitnessSet>;
   readonly address: string;
+  /** The committee secrets this world was deployed with, so tests can act as any member. */
+  committeeSecrets: readonly Uint8Array[];
   context: CircuitContext<OnePledgePrivateState>;
   lastResult?: CircuitResults<OnePledgePrivateState, unknown>;
 
   constructor(
+    /** The deployer's secret. It is no longer the registrar: `committee` decides that. */
     registrarSecret: Uint8Array,
     authority: Point,
     windowStart: bigint,
@@ -39,11 +45,17 @@ export class RegistrySimulator {
   ) {
     this.address = options.address ?? sampleContractAddress();
     this.contract = new Contract<OnePledgePrivateState, WitnessSet>({ ...witnesses, ...witnessOverrides });
+    // globalThis.crypto, not node:crypto: the web walkthrough runs this simulator in the browser.
+    const committee =
+      options.committee ??
+      [registrarSecret, ...[1, 2].map(() => crypto.getRandomValues(new Uint8Array(32)))];
+    this.committeeSecrets = committee;
     const init = this.contract.initialState(
       createConstructorContext<OnePledgePrivateState>({ secretKey: registrarSecret }, COIN_PUBLIC_KEY),
       authority,
       windowStart,
       windowEnd,
+      committee.map((sk) => pureCircuits.registrarKey(sk)),
     );
     this.context = createCircuitContext(
       this.address,
@@ -86,14 +98,52 @@ export class RegistrySimulator {
     return result.result;
   }
 
-  /** encryptionKey defaults to zeros: tests that exercise authorization do not care about it, and
-   *  the real callers (CLI, web) always pass the lender's derived key. */
-  admitLender(lender: Uint8Array, encryptionKey: Uint8Array = new Uint8Array(32)): void {
-    this.run((ctx) => this.contract.impureCircuits.admitLender(ctx, lender, encryptionKey));
+  approveAdmit(lender: Uint8Array, encryptionKey: Uint8Array = new Uint8Array(32)): void {
+    this.run((ctx) => this.contract.impureCircuits.approveAdmit(ctx, lender, encryptionKey));
   }
 
-  rotateRegistrar(next: Uint8Array): void {
-    this.run((ctx) => this.contract.impureCircuits.rotateRegistrar(ctx, next));
+  executeAdmit(lender: Uint8Array, encryptionKey: Uint8Array = new Uint8Array(32)): void {
+    this.run((ctx) => this.contract.impureCircuits.executeAdmit(ctx, lender, encryptionKey));
+  }
+
+  approveRotate(members: readonly Uint8Array[]): void {
+    this.run((ctx) => this.contract.impureCircuits.approveRotate(ctx, [...members]));
+  }
+
+  executeRotate(members: readonly Uint8Array[]): void {
+    this.run((ctx) => this.contract.impureCircuits.executeRotate(ctx, [...members]));
+  }
+
+  /**
+   * Admit a lender the way a 2-of-3 committee does: two members approve, then anyone executes.
+   * encryptionKey defaults to zeros: tests that exercise authorization do not care about it, and
+   * the real callers (CLI, web) always pass the lender's derived key.
+   */
+  admitLender(lender: Uint8Array, encryptionKey: Uint8Array = new Uint8Array(32)): void {
+    const acting = this.context.currentPrivateState;
+    for (const sk of this.committeeSecrets.slice(0, 2)) {
+      this.as({ secretKey: sk });
+      this.approveAdmit(lender, encryptionKey);
+    }
+    this.as(acting);
+    this.executeAdmit(lender, encryptionKey);
+  }
+
+  /** Rotate the committee the way a 2-of-3 does, and track the new secrets. */
+  rotateCommittee(next: readonly Uint8Array[]): void {
+    const members = next.map((sk) => pureCircuits.registrarKey(sk));
+    const acting = this.context.currentPrivateState;
+    for (const sk of this.committeeSecrets.slice(0, 2)) {
+      this.as({ secretKey: sk });
+      this.approveRotate(members);
+    }
+    this.as(acting);
+    this.executeRotate(members);
+    this.committeeSecrets = next;
+  }
+
+  proveBorrowingBase(round: Uint8Array, floor: bigint): void {
+    this.run((ctx) => this.contract.impureCircuits.proveBorrowingBase(ctx, round, floor));
   }
 
   pledge(lender: Uint8Array, delivery: Uint8Array = new Uint8Array()): Uint8Array {

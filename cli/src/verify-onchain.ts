@@ -27,7 +27,18 @@ const check = (label: string, ok: boolean, detail = '') => {
   if (!ok) failures.push(label);
 };
 
-for (const circuit of ['admitLender', 'rotateRegistrar', 'pledge', 'release', 'acceptPledge', 'declinePledge']) {
+const CIRCUITS = [
+  'approveAdmit',
+  'executeAdmit',
+  'approveRotate',
+  'executeRotate',
+  'pledge',
+  'release',
+  'acceptPledge',
+  'declinePledge',
+  'proveBorrowingBase',
+];
+for (const circuit of CIRCUITS) {
   const committed = fs.readFileSync(path.join(zkConfigPath, 'keys', `${circuit}.verifier`));
   const onChain = state.operation(circuit)?.verifierKey;
   check(`verifier key: ${circuit}`, !!onChain && Buffer.from(onChain).equals(committed), `${committed.length} bytes`);
@@ -40,13 +51,44 @@ check(
 );
 check('acceptance window matches deployment record', Number(ledger.windowStart) === record.windowStart && Number(ledger.windowEnd) === record.windowEnd);
 
+// The registrar committee: assert the recorded members are the ones the on-chain tree holds, rather
+// than printing it and hoping someone reads the number. A leaf is committeeLeaf(epoch, key), so this
+// also pins the epoch: after a rotation the recorded committee must be updated or this fails.
+if (record.registrarCommittee) {
+  const { threshold, members } = record.registrarCommittee;
+  check('registrar threshold matches deployment record', ledger.threshold === BigInt(threshold), `chain ${ledger.threshold}`);
+  for (const [i, hex] of members.entries()) {
+    const key = new Uint8Array(Buffer.from(hex, 'hex'));
+    const leaf = Registry.pureCircuits.committeeLeaf(ledger.committeeEpoch, key);
+    check(
+      `registrar committee seat ${i + 1} is in the on-chain tree`,
+      ledger.registrars.findPathForLeaf(leaf) !== undefined,
+      `${hex.slice(0, 12)} at epoch ${ledger.committeeEpoch}`,
+    );
+  }
+} else {
+  console.log('info  no registrar committee recorded in the deployment file; skipping that check');
+}
+
 const recordedPledges = record.events.filter((e) => e.circuit === 'pledge' && e.txHash).length;
 const recordedReleases = record.events.filter((e) => e.circuit === 'release' && e.txHash).length;
 check('pledge count covers recorded pledges', ledger.pledgeCount >= BigInt(recordedPledges), `chain ${ledger.pledgeCount}, recorded ${recordedPledges}`);
 check('release count covers recorded releases', ledger.releaseCount >= BigInt(recordedReleases), `chain ${ledger.releaseCount}, recorded ${recordedReleases}`);
 
+const recordedDraws = record.events.filter((e) => e.circuit === 'proveBorrowingBase' && e.txHash).length;
+check('draw count covers recorded borrowing-base proofs', ledger.drawCount >= BigInt(recordedDraws), `chain ${ledger.drawCount}, recorded ${recordedDraws}`);
+
 const authority = state.maintenanceAuthority;
-console.log(`info  upgrade authority: ${authority.committee.length}-member committee, threshold ${authority.threshold}`);
+const recordedUpgrade = record.maintenanceAuthority;
+if (recordedUpgrade) {
+  check(
+    'upgrade authority matches deployment record',
+    authority.committee.length === recordedUpgrade.committeeSize && Number(authority.threshold) === Number(recordedUpgrade.threshold),
+    `chain ${authority.committee.length}-of-${authority.threshold}, recorded ${recordedUpgrade.committeeSize}-of-${recordedUpgrade.threshold}`,
+  );
+} else {
+  console.log(`info  upgrade authority: ${authority.committee.length}-member committee, threshold ${authority.threshold}`);
+}
 
 if (failures.length) {
   console.error(`\n${failures.length} check(s) failed.`);

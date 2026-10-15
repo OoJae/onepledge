@@ -21,10 +21,12 @@ import {
   attestInvoice,
   borrowerState,
   invoiceNumber,
+  lenderPoolState,
   lenderReleaseState,
   newAuthority,
   newWorld,
   pledgeAs,
+  pledgePool,
   secret,
   type AttestedInvoice,
   type World,
@@ -43,17 +45,26 @@ const tryPledge = (w: World, inv: AttestedInvoice, lender = w.lenderA, borrower 
   pledgeAs(w, inv, lender, borrower);
 
 describe('deployment', () => {
-  it('stores the registrar key, tag authority and acceptance window', () => {
+  it('stores the committee, tag authority and acceptance window', () => {
     const authority = newAuthority();
-    const registrar = secret();
-    const sim = new RegistrySimulator(registrar, publicKeyOf(authority.sk), WINDOW_START, WINDOW_END);
+    const committee = [secret(), secret(), secret()];
+    const sim = new RegistrySimulator(committee[0], publicKeyOf(authority.sk), WINDOW_START, WINDOW_END, {}, {
+      committee,
+    });
     const l = sim.ledger();
-    expect(hex(l.registrar)).toBe(hex(pureCircuits.registrarKey(registrar)));
+    expect(l.threshold).toBe(2n);
+    expect(l.committeeEpoch).toBe(0n);
+    expect(l.registrars.firstFree()).toBe(3n);
+    for (const sk of committee) {
+      const leaf = pureCircuits.committeeLeaf(0n, pureCircuits.registrarKey(sk));
+      expect(l.registrars.findPathForLeaf(leaf), 'committee member is not in the tree').toBeDefined();
+    }
     expect(l.tagAuthority).toEqual(publicKeyOf(authority.sk));
     expect(l.windowStart).toBe(WINDOW_START);
     expect(l.windowEnd).toBe(WINDOW_END);
     expect(l.pledgeCount).toBe(0n);
     expect(l.releaseCount).toBe(0n);
+    expect(l.drawCount).toBe(0n);
     expect(l.tags.isEmpty()).toBe(true);
   });
 
@@ -63,44 +74,178 @@ describe('deployment', () => {
     expect(() => new RegistrySimulator(secret(), pk, WINDOW_START, WINDOW_START)).toThrow(/Empty acceptance window/);
   });
 
-  it('never stores the registrar secret itself', () => {
-    const registrar = secret();
-    const sim = new RegistrySimulator(registrar, publicKeyOf(newAuthority().sk), WINDOW_START, WINDOW_END);
-    expect(hex(sim.ledger().registrar)).not.toBe(hex(registrar));
+  it('rejects a committee with a repeated member', () => {
+    const pk = publicKeyOf(newAuthority().sk);
+    const a = secret();
+    const b = secret();
+    for (const committee of [[a, a, b], [a, b, b], [a, b, a]]) {
+      expect(() => new RegistrySimulator(a, pk, WINDOW_START, WINDOW_END, {}, { committee })).toThrow(
+        /Committee members must be distinct/,
+      );
+    }
+  });
+
+  it('stores epoch-bound leaves, never a secret or a bare registrar key', () => {
+    const committee = [secret(), secret(), secret()];
+    const sim = new RegistrySimulator(committee[0], publicKeyOf(newAuthority().sk), WINDOW_START, WINDOW_END, {}, {
+      committee,
+    });
+    const tree = sim.ledger().registrars;
+    for (const sk of committee) {
+      const key = pureCircuits.registrarKey(sk);
+      expect(tree.findPathForLeaf(sk), 'a secret is a leaf').toBeUndefined();
+      expect(tree.findPathForLeaf(key), 'a bare registrar key is a leaf').toBeUndefined();
+      expect(tree.findPathForLeaf(pureCircuits.committeeLeaf(0n, key))).toBeDefined();
+      // And not under any other epoch, which is what retires a rotated-out member.
+      expect(tree.findPathForLeaf(pureCircuits.committeeLeaf(1n, key))).toBeUndefined();
+    }
   });
 });
 
-describe('registrar', () => {
-  it('admits lenders into the registry tree', () => {
+describe('registrar committee', () => {
+  it('admits lenders into the registry tree once two members approve', () => {
     const w = newWorld();
     expect(w.sim.ledger().lenders.findPathForLeaf(pureCircuits.lenderKey(w.lenderA))).toBeDefined();
     expect(w.sim.ledger().lenders.findPathForLeaf(pureCircuits.lenderKey(w.lenderB))).toBeDefined();
     expect(w.sim.ledger().lenders.firstFree()).toBe(2n);
+    // Both admissions are spent, and nothing is left pending.
+    expect(w.sim.ledger().executed.size()).toBe(2n);
+    expect(w.sim.ledger().proposals.isEmpty()).toBe(true);
   });
 
-  it('refuses to let anyone else admit a lender', () => {
+  it('refuses an admission with only one approval', () => {
+    const w = newWorld();
+    const lender = pureCircuits.lenderKey(secret());
+    w.sim.as({ secretKey: w.committee[0] });
+    w.sim.approveAdmit(lender);
+    expect(() => w.sim.executeAdmit(lender)).toThrow(/Below the registrar threshold/);
+    expect(w.sim.ledger().lenders.firstFree()).toBe(2n);
+  });
+
+  it('refuses an admission with no approvals at all', () => {
+    const w = newWorld();
+    expect(() => w.sim.executeAdmit(pureCircuits.lenderKey(secret()))).toThrow(
+      /No approvals recorded for this action/,
+    );
+  });
+
+  it('counts two different members, not one member twice', () => {
+    const w = newWorld();
+    const lender = pureCircuits.lenderKey(secret());
+    w.sim.as({ secretKey: w.committee[1] });
+    w.sim.approveAdmit(lender);
+    expect(() => w.sim.approveAdmit(lender)).toThrow(/Already approved by this committee member/);
+    w.sim.as({ secretKey: w.committee[2] });
+    w.sim.approveAdmit(lender);
+    w.sim.executeAdmit(lender);
+    expect(w.sim.ledger().lenders.findPathForLeaf(lender)).toBeDefined();
+  });
+
+  it('refuses an approval from outside the committee', () => {
     const w = newWorld();
     w.sim.as({ secretKey: w.borrower });
-    expect(() => w.sim.admitLender(pureCircuits.lenderKey(secret()))).toThrow(/Only the registrar can admit lenders/);
+    expect(() => w.sim.approveAdmit(pureCircuits.lenderKey(secret()))).toThrow(
+      /Not a member of the current registrar committee/,
+    );
   });
 
-  it('hands the role over on rotation', () => {
+  it('refuses to replay one set of approvals on a second admission', () => {
     const w = newWorld();
-    const next = secret();
-    w.sim.as({ secretKey: w.registrar });
-    w.sim.rotateRegistrar(pureCircuits.registrarKey(next));
-    expect(() => w.sim.admitLender(pureCircuits.lenderKey(secret()))).toThrow(/Only the registrar/);
-    w.sim.as({ secretKey: next });
-    w.sim.admitLender(pureCircuits.lenderKey(secret()));
+    const lender = pureCircuits.lenderKey(secret());
+    w.sim.admitLender(lender);
+    expect(() => w.sim.executeAdmit(lender)).toThrow(/Lender already admitted/);
     expect(w.sim.ledger().lenders.firstFree()).toBe(3n);
   });
 
-  it('refuses rotation from a non-registrar', () => {
+  it('refuses to approve a lender that is already admitted', () => {
     const w = newWorld();
-    w.sim.as({ secretKey: w.borrower });
-    expect(() => w.sim.rotateRegistrar(pureCircuits.registrarKey(w.borrower))).toThrow(
-      /Only the registrar can rotate the registrar/,
+    w.sim.as({ secretKey: w.committee[0] });
+    expect(() => w.sim.approveAdmit(pureCircuits.lenderKey(w.lenderA))).toThrow(/Lender already admitted/);
+  });
+
+  it('binds the encryption key into the approval, so a swapped key has no quorum', () => {
+    const w = newWorld();
+    const lender = pureCircuits.lenderKey(secret());
+    const real = new Uint8Array(32).fill(7);
+    const swapped = new Uint8Array(32).fill(8);
+    for (const sk of w.committee.slice(0, 2)) {
+      w.sim.as({ secretKey: sk });
+      w.sim.approveAdmit(lender, real);
+    }
+    expect(() => w.sim.executeAdmit(lender, swapped)).toThrow(/No approvals recorded for this action/);
+    w.sim.executeAdmit(lender, real);
+    expect(hex(w.sim.ledger().lenderEncryptionKeys.lookup(lender))).toBe(hex(real));
+  });
+
+  it('rotates the whole committee on two approvals, and retires the old one', () => {
+    const w = newWorld();
+    const next = [secret(), secret(), secret()];
+    w.sim.rotateCommittee(next);
+    expect(w.sim.ledger().committeeEpoch).toBe(1n);
+    expect(w.sim.ledger().registrars.firstFree()).toBe(6n);
+
+    // A retired member cannot even build a membership path for the new epoch.
+    w.sim.as({ secretKey: w.committee[0] });
+    expect(() => w.sim.approveAdmit(pureCircuits.lenderKey(secret()))).toThrow(
+      /Not a member of the current registrar committee/,
     );
+
+    const lender = pureCircuits.lenderKey(secret());
+    for (const sk of next.slice(0, 2)) {
+      w.sim.as({ secretKey: sk });
+      w.sim.approveAdmit(lender);
+    }
+    w.sim.executeAdmit(lender);
+    expect(w.sim.ledger().lenders.findPathForLeaf(lender)).toBeDefined();
+  });
+
+  it('refuses a rotation with only one approval', () => {
+    const w = newWorld();
+    const members = [secret(), secret(), secret()].map((sk) => pureCircuits.registrarKey(sk));
+    w.sim.as({ secretKey: w.committee[0] });
+    w.sim.approveRotate(members);
+    expect(() => w.sim.executeRotate(members)).toThrow(/Below the registrar threshold/);
+    expect(w.sim.ledger().committeeEpoch).toBe(0n);
+  });
+
+  it('refuses to rotate to a committee with a repeated member', () => {
+    const w = newWorld();
+    const [a, b] = [secret(), secret()].map((sk) => pureCircuits.registrarKey(sk));
+    const members = [a, b, a];
+    for (const sk of w.committee.slice(0, 2)) {
+      w.sim.as({ secretKey: sk });
+      w.sim.approveRotate(members);
+    }
+    expect(() => w.sim.executeRotate(members)).toThrow(/Committee members must be distinct/);
+  });
+
+  it('voids pending proposals when the committee rotates', () => {
+    const w = newWorld();
+    const lender = pureCircuits.lenderKey(secret());
+    // One approval gathered under epoch 0.
+    w.sim.as({ secretKey: w.committee[0] });
+    w.sim.approveAdmit(lender);
+
+    const next = [w.committee[0], secret(), secret()];
+    w.sim.rotateCommittee(next);
+
+    // The surviving member's epoch-0 approval does not carry over: the action is epoch-bound, so a
+    // single approval under epoch 1 is still one short.
+    w.sim.as({ secretKey: next[1] });
+    w.sim.approveAdmit(lender);
+    expect(() => w.sim.executeAdmit(lender)).toThrow(/Below the registrar threshold/);
+    w.sim.as({ secretKey: next[0] });
+    w.sim.approveAdmit(lender);
+    w.sim.executeAdmit(lender);
+    expect(w.sim.ledger().lenders.findPathForLeaf(lender)).toBeDefined();
+  });
+
+  it('refuses to replay a rotation', () => {
+    const w = newWorld();
+    const next = [secret(), secret(), secret()];
+    w.sim.rotateCommittee(next);
+    const members = next.map((sk) => pureCircuits.registrarKey(sk));
+    expect(() => w.sim.executeRotate(members)).toThrow(/No approvals recorded for this action/);
   });
 });
 
@@ -665,6 +810,168 @@ describe('pure helpers', () => {
     expect(hex(pureCircuits.noteCommitment(tag, lender, commit, 12_500_000n, salt))).not.toBe(
       hex(pureCircuits.noteCommitment(tag, lender, commit, 12_500_001n, salt)),
     );
+  });
+});
+
+describe('borrowing base', () => {
+  const ROUND = new Uint8Array(32).fill(1);
+  // Four receivables worth 10.00, 20.00, 30.00 and 40.00 PLN in grosz: 10,000,000 together.
+  const AMOUNTS = ['1000000', '2000000', '3000000', '4000000'];
+  const TOTAL = 10_000_000n;
+
+  const withPool = (lender?: Uint8Array) => {
+    const w = newWorld();
+    const sk = lender ?? w.lenderA;
+    const pool = pledgePool(w, sk, AMOUNTS);
+    w.sim.as(lenderPoolState(sk, pool));
+    return { w, pool, sk };
+  };
+
+  it('proves a floor the book clears, and records the round and the floor', () => {
+    const { w, sk } = withPool();
+    w.sim.proveBorrowingBase(ROUND, TOTAL);
+    const l = w.sim.ledger();
+    expect(l.drawCount).toBe(1n);
+    const id = pureCircuits.drawId(ROUND, sk);
+    expect(l.draws.member(id)).toBe(true);
+    const record = l.draws.lookup(id);
+    expect(hex(record.round)).toBe(hex(ROUND));
+    expect(record.floor).toBe(TOTAL);
+  });
+
+  it('clears a floor below the total, and refuses one above it', () => {
+    const { w } = withPool();
+    w.sim.proveBorrowingBase(ROUND, TOTAL - 1n);
+    expect(w.sim.ledger().drawCount).toBe(1n);
+
+    const other = withPool();
+    expect(() => other.w.sim.proveBorrowingBase(ROUND, TOTAL + 1n)).toThrow(/Pool does not clear the floor/);
+    expect(other.w.sim.ledger().drawCount).toBe(0n);
+  });
+
+  it('refuses the same receivable counted four times', () => {
+    const { w, pool, sk } = withPool();
+    w.sim.as(lenderPoolState(sk, [pool[0], pool[0], pool[0], pool[0]]));
+    expect(() => w.sim.proveBorrowingBase(ROUND, 1n)).toThrow(/A receivable appears twice in the pool/);
+  });
+
+  it('refuses a pool with one receivable repeated', () => {
+    const { w, pool, sk } = withPool();
+    for (const dup of [
+      [pool[0], pool[1], pool[2], pool[0]],
+      [pool[0], pool[1], pool[1], pool[3]],
+    ]) {
+      w.sim.as(lenderPoolState(sk, dup));
+      expect(() => w.sim.proveBorrowingBase(ROUND, 1n)).toThrow(/A receivable appears twice in the pool/);
+    }
+  });
+
+  it('one draw per round, and a new round starts fresh', () => {
+    const { w } = withPool();
+    w.sim.proveBorrowingBase(ROUND, TOTAL);
+    expect(() => w.sim.proveBorrowingBase(ROUND, TOTAL)).toThrow(
+      /A borrowing base was already proven for this round/,
+    );
+    w.sim.proveBorrowingBase(new Uint8Array(32).fill(2), TOTAL);
+    expect(w.sim.ledger().drawCount).toBe(2n);
+  });
+
+  it('two lenders draw over their own books without colliding', () => {
+    const w = newWorld();
+    const poolA = pledgePool(w, w.lenderA, AMOUNTS);
+    const poolB = pledgePool(w, w.lenderB, AMOUNTS);
+    w.sim.as(lenderPoolState(w.lenderA, poolA));
+    w.sim.proveBorrowingBase(ROUND, TOTAL);
+    w.sim.as(lenderPoolState(w.lenderB, poolB));
+    w.sim.proveBorrowingBase(ROUND, TOTAL);
+    expect(w.sim.ledger().drawCount).toBe(2n);
+    expect(hex(pureCircuits.drawId(ROUND, w.lenderA))).not.toBe(hex(pureCircuits.drawId(ROUND, w.lenderB)));
+  });
+
+  it('refuses a pool holding another lender\'s receivable', () => {
+    const w = newWorld();
+    const poolA = pledgePool(w, w.lenderA, AMOUNTS.slice(0, 3));
+    const poolB = pledgePool(w, w.lenderB, AMOUNTS.slice(3));
+    w.sim.as(lenderPoolState(w.lenderA, [...poolA, ...poolB]));
+    // The note commitment binds the lender, so lender A cannot even find a path for B's note.
+    expect(() => w.sim.proveBorrowingBase(ROUND, 1n)).toThrow(/Pool item 3 is not a pledge note on the ledger/);
+  });
+
+  it('refuses another lender who supplies the real note paths', () => {
+    const w = newWorld();
+    const pool = pledgePool(w, w.lenderA, AMOUNTS);
+    const lenderAKey = pureCircuits.lenderKey(w.lenderA);
+    w.sim.contract.witnesses.getPoolPaths = ({ privateState, ledger }) => [
+      privateState,
+      pool.map(
+        (n) =>
+          ledger.notes.findPathForLeaf(
+            pureCircuits.noteCommitment(n.tag, lenderAKey, n.invoiceCommit, n.amount, n.salt),
+          )!,
+      ),
+    ];
+    w.sim.as(lenderPoolState(w.lenderB, pool));
+    expect(() => w.sim.proveBorrowingBase(ROUND, 1n)).toThrow(/Pool note path does not match its opening/);
+  });
+
+  it('refuses an inflated amount, because the note commitment binds what was attested', () => {
+    const { w, pool, sk } = withPool();
+    const inflated = [{ ...pool[0], amount: pool[0].amount * 1000n }, pool[1], pool[2], pool[3]];
+    w.sim.as(lenderPoolState(sk, inflated));
+    expect(() => w.sim.proveBorrowingBase(ROUND, TOTAL * 100n)).toThrow(
+      /Pool item 0 is not a pledge note on the ledger/,
+    );
+  });
+
+  it('rejects a forged note path', () => {
+    const { w, pool, sk } = withPool();
+    const lenderKey = pureCircuits.lenderKey(sk);
+    w.sim.contract.witnesses.getPoolPaths = ({ privateState, ledger }) => [
+      privateState,
+      pool.map((n, i) => {
+        const real = ledger.notes.findPathForLeaf(
+          pureCircuits.noteCommitment(n.tag, lenderKey, n.invoiceCommit, n.amount, n.salt),
+        )!;
+        if (i !== 2) return real;
+        const [first, ...rest] = real.path;
+        return { ...real, path: [{ ...first, sibling: { field: first.sibling.field + 1n } }, ...rest] };
+      }),
+    ];
+    expect(() => w.sim.proveBorrowingBase(ROUND, 1n)).toThrow(/Unknown pool note/);
+  });
+
+  it('needs exactly four openings', () => {
+    const { w, pool, sk } = withPool();
+    for (const wrong of [pool.slice(0, 3), [...pool, pool[0]], []]) {
+      w.sim.as(lenderPoolState(sk, wrong));
+      expect(() => w.sim.proveBorrowingBase(ROUND, 1n)).toThrow(
+        /A borrowing-base pool needs exactly 4 note openings/,
+      );
+    }
+  });
+
+  it('is what a lender does with the openings its inbox decrypted', () => {
+    // The whole chain, end to end: the borrower seals four openings to the lender, the lender finds
+    // them by scanning, accepts them, and proves its book clears a floor — without the funder ever
+    // seeing an invoice, an amount or which receivables are in the pool.
+    const w = newWorld();
+    const invoices = AMOUNTS.map((amount) => attestInvoice(w.authority, w.borrower, invoiceNumber(), amount));
+    for (const inv of invoices) pledgeAs(w, inv, w.lenderA, w.borrower, true);
+
+    const decrypted = [...w.sim.ledger().deliveries]
+      .map(([, ciphertext]) => openDelivery(w.lenderA, ciphertext))
+      .filter((o): o is NonNullable<typeof o> => o !== undefined);
+    expect(decrypted).toHaveLength(4);
+
+    for (const opening of decrypted) {
+      w.sim.as({ secretKey: w.lenderA, releaseNote: opening });
+      w.sim.acceptPledge();
+    }
+    expect(w.sim.ledger().acceptCount).toBe(4n);
+
+    w.sim.as(lenderPoolState(w.lenderA, decrypted));
+    w.sim.proveBorrowingBase(ROUND, TOTAL);
+    expect(w.sim.ledger().draws.lookup(pureCircuits.drawId(ROUND, w.lenderA)).floor).toBe(TOTAL);
   });
 });
 

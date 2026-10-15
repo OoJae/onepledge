@@ -73,26 +73,30 @@ export const attestInvoice = (
 export interface World {
   readonly sim: RegistrySimulator;
   readonly authority: TagAuthority;
+  /** The three registrar-committee secrets. `committee[0]` is also the deployer. */
+  readonly committee: readonly Uint8Array[];
+  /** Alias for `committee[0]`: the member most tests act as. */
   readonly registrar: Uint8Array;
   readonly lenderA: Uint8Array;
   readonly lenderB: Uint8Array;
   readonly borrower: Uint8Array;
 }
 
-/** A registry with two admitted lenders and one borrower. */
+/** A registry with a 2-of-3 registrar committee, two admitted lenders and one borrower. */
 export const newWorld = (overrides: ConstructorParameters<typeof RegistrySimulator>[4] = {}): World => {
   const authority = newAuthority();
-  const registrar = secret();
-  const sim = new RegistrySimulator(registrar, publicKeyOf(authority.sk), WINDOW_START, WINDOW_END, overrides, {
+  const committee = [secret(), secret(), secret()];
+  const sim = new RegistrySimulator(committee[0], publicKeyOf(authority.sk), WINDOW_START, WINDOW_END, overrides, {
     address: SIM_ADDRESS,
     time: NOW,
+    committee,
   });
   const lenderA = secret();
   const lenderB = secret();
-  sim.as({ secretKey: registrar });
+  sim.as({ secretKey: committee[0] });
   sim.admitLender(pureCircuits.lenderKey(lenderA), lenderEncryptionKey(lenderA));
   sim.admitLender(pureCircuits.lenderKey(lenderB), lenderEncryptionKey(lenderB));
-  return { sim, authority, registrar, lenderA, lenderB, borrower: secret() };
+  return { sim, authority, committee, registrar: committee[0], lenderA, lenderB, borrower: secret() };
 };
 
 /** Borrower private state ready to pledge `invoice` to `lenderSecret`'s lender key. */
@@ -130,6 +134,31 @@ export const pledgeAs = (
   const note = w.sim.pledge(pureCircuits.lenderKey(lenderSecret), delivery);
   return { note, noteSalt };
 };
+
+/** The opening a lender holds for a note pledged to it. */
+export const openingOf = (invoice: AttestedInvoice, noteSalt: Uint8Array) => ({
+  tag: invoice.attestation.tag,
+  invoiceCommit: invoice.attestation.invoiceCommit,
+  amount: invoice.attestation.amount,
+  salt: noteSalt,
+});
+
+/**
+ * Pledge `amounts.length` fresh invoices to one lender and return the openings that lender holds,
+ * ready to drop into a borrowing-base pool.
+ */
+export const pledgePool = (w: World, lenderSecret: Uint8Array, amounts: readonly string[]) =>
+  amounts.map((amountGrosz) => {
+    const invoice = attestInvoice(w.authority, w.borrower, invoiceNumber(), amountGrosz);
+    const { noteSalt } = pledgeAs(w, invoice, lenderSecret);
+    return openingOf(invoice, noteSalt);
+  });
+
+/** Lender private state ready to prove a borrowing base over `pool`. */
+export const lenderPoolState = (
+  lenderSecret: Uint8Array,
+  pool: readonly ReturnType<typeof openingOf>[],
+): OnePledgePrivateState => ({ secretKey: lenderSecret, pool });
 
 export const lenderReleaseState = (lenderSecret: Uint8Array, invoice: AttestedInvoice, noteSalt: Uint8Array) => ({
   secretKey: lenderSecret,

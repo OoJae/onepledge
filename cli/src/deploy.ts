@@ -1,11 +1,14 @@
 // SPDX-License-Identifier: Apache-2.0
-// Deploys the OnePledge registry. The deployer's party secret becomes the registrar.
+// Deploys the OnePledge registry. The three registrar-committee seats are passed as key
+// commitments; the deployer holds all three secrets in this demo.
 
 import { deployContract } from '@midnight-ntwrk/midnight-js-contracts';
 import { dayFromIso } from '@onepledge/attester';
+import { Registry } from '@onepledge/contract';
 import { selectNetwork } from './config.js';
 import fs from 'node:fs';
 import {
+  COMMITTEE_SEATS,
   archiveDeployment,
   configureProviders,
   deploymentFile,
@@ -52,12 +55,16 @@ const providers = await configureProviders(ctx, network);
 const parties = loadParties(network);
 const authority = loadTagAuthority(network);
 
+const committee = COMMITTEE_SEATS.map((seat) => Registry.pureCircuits.registrarKey(parties[seat]));
+const committeeHex = committee.map((k) => Buffer.from(k).toString('hex'));
+log(`Registrar committee (2 of 3): ${committeeHex.map((k) => k.slice(0, 12)).join(' ')}`);
+
 log('Deploying registry (proof generated on the local proof server)...');
 const deployed = await deployContract(providers, {
   compiledContract: registryContract,
   privateStateId: 'registrar',
   initialPrivateState: { secretKey: parties.registrar },
-  args: [authority.pk, BigInt(WINDOW_START), BigInt(WINDOW_END)],
+  args: [authority.pk, BigInt(WINDOW_START), BigInt(WINDOW_END), committee],
 } as never);
 
 const pub = (deployed as { deployTxData: { public: { contractAddress: string; txId: string; txHash: string; blockHeight: number } } })
@@ -71,7 +78,7 @@ if (archived) log(`Archived the previous record to ${archived}`);
 
 writeDeployment(network, {
   network: network.name,
-  version: process.env.REGISTRY_VERSION ?? 'v3',
+  version: process.env.REGISTRY_VERSION ?? 'v4',
   status: 'active',
   maintenanceAuthority: authorityInfo
     ? {
@@ -80,6 +87,11 @@ writeDeployment(network, {
         note: 'Deployer-held upgrade key: can insert or remove verifier keys. Planned: 2-of-3 committee, then frozen.',
       }
     : undefined,
+  registrarCommittee: {
+    threshold: 2,
+    members: committeeHex,
+    note: 'All three seats are deployer-held in this demo. The 2-of-3 mechanism is genuinely enforced on chain; the key custody is not distributed.',
+  },
   contractAddress: pub.contractAddress,
   deployTxId: pub.txId,
   deployTxHash: pub.txHash,

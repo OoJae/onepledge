@@ -42,13 +42,14 @@ const authority = loadTagAuthority(network);
 const parties = loadParties(network);
 
 // Fixed, published, testnet-only. Pledges from the desk are made as this borrower.
-const demoBorrower = Buffer.from('6f6e65706c656467652d64656d6f2d626f72726f7765722d76332d2d2d2d2d2d', 'hex');
+const demoBorrower = Buffer.from('6f6e65706c656467652d64656d6f2d626f72726f7765722d76342d2d2d2d2d2d', 'hex');
 const borrowerKey = Registry.pureCircuits.borrowerKey(demoBorrower);
 
 const hex = (b: Uint8Array) => Buffer.from(b).toString('hex');
 
 const mint = (index: number) => {
-  // Acceptance days must fall inside the registry's window; these sit in September 2026.
+  // Acceptance days must fall inside the registry's window; these sit in September 2026. Six of
+  // them is one spare plus a borrowing-base pool of four, which is what the desk's draw needs.
   const day = String(10 + (index % 18)).padStart(2, '0');
   // The technical segment is exactly 12 uppercase hex characters; 'D' marks these as demo-minted.
   const technical = `D${index.toString(16).padStart(2, '0')}${randomBytes(6).toString('hex')}`.toUpperCase().slice(0, 12);
@@ -93,16 +94,24 @@ const mint = (index: number) => {
 };
 
 const bundle = {
-  note: 'Testnet demo only. Synthetic KSeF numbers, and the borrower secret below is published on purpose so anyone can pledge from the desk. Each attestation is single-use: once its tag is pledged the registry refuses it forever.',
+  note: 'Testnet demo only. Synthetic KSeF numbers; the borrower secret and the lender secrets below are published on purpose, so a visitor can pledge from the desk and read the lender inbox. Each attestation is single-use: once its tag is pledged the registry refuses it forever.',
   registryVersion: record.version,
   contractAddress: record.contractAddress,
   borrowerSecret: hex(demoBorrower),
-  // Public key commitments of the lenders the registrar admitted. Only the commitment is public;
+  // Public key commitments of the lenders the committee admitted. Only the commitment is public;
   // the pledge still proves membership against a historic root without naming which lender it is.
-  lenders: [
-    { label: 'Lender A', key: hex(Registry.pureCircuits.lenderKey(parties.lenderA)), encryptionKey: hex(lenderEncryptionKey(parties.lenderA)) },
-    { label: 'Lender B', key: hex(Registry.pureCircuits.lenderKey(parties.lenderB)), encryptionKey: hex(lenderEncryptionKey(parties.lenderB)) },
-  ],
+  //
+  // `secret` is each demo lender's party secret, published on purpose and only because this is a
+  // testnet toy: the lender inbox has to decrypt deliveries in the visitor's browser, so a visitor
+  // who cannot be a lender cannot see the inbox work at all. On a real deployment this never leaves
+  // the lender's machine, and publishing it would let anyone accept, decline or release that
+  // lender's pledges and read every delivery addressed to it.
+  lenders: (['lenderA', 'lenderB'] as const).map((id, i) => ({
+    label: `Lender ${'AB'[i]}`,
+    key: hex(Registry.pureCircuits.lenderKey(parties[id])),
+    encryptionKey: hex(lenderEncryptionKey(parties[id])),
+    secret: hex(parties[id]),
+  })),
   attestations: Array.from({ length: COUNT }, (_, i) => mint(i)),
 };
 

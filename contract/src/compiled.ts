@@ -10,12 +10,15 @@ import * as Registry from './managed/registry/contract/index.js';
 import { witnesses, type OnePledgePrivateState } from './witnesses.js';
 
 export type RegistryCircuits =
-  | 'admitLender'
-  | 'rotateRegistrar'
+  | 'approveAdmit'
+  | 'executeAdmit'
+  | 'approveRotate'
+  | 'executeRotate'
   | 'pledge'
   | 'release'
   | 'acceptPledge'
-  | 'declinePledge';
+  | 'declinePledge'
+  | 'proveBorrowingBase';
 
 export const makeRegistryContract = (zkConfigPath: string) =>
   CompiledContract.make<Registry.Contract<OnePledgePrivateState>>('OnePledgeRegistry', Registry.Contract).pipe(

@@ -18,7 +18,11 @@ import { type NetworkConfig, repoRoot, secretsDir } from './config.js';
 import { type WalletContext, unshieldedAddress } from './wallet.js';
 
 export type { RegistryCircuits };
-export type PartyId = 'registrar' | 'borrower' | 'lenderA' | 'lenderB';
+// `registrar` is committee seat 1; `registrar2` and `registrar3` are seats 2 and 3. All three are
+// held by the deployer in this demo, which is stated in the README and the threat model rather than
+// dressed up as decentralisation. The contract does not care: it only ever sees key commitments.
+export type PartyId = 'registrar' | 'registrar2' | 'registrar3' | 'borrower' | 'lenderA' | 'lenderB';
+export const COMMITTEE_SEATS: readonly PartyId[] = ['registrar', 'registrar2', 'registrar3'];
 export type RegistryProviders = MidnightProviders<RegistryCircuits, PartyId, OnePledgePrivateState>;
 
 export const zkConfigPath = path.join(repoRoot, 'contract', 'src', 'managed', 'registry');
@@ -51,13 +55,26 @@ export const loadTagAuthority = (network: NetworkConfig) => {
 export const loadParties = (network: NetworkConfig): Record<PartyId, Uint8Array> => {
   const raw = readOrCreate<Record<PartyId, string>>(`${network.name}-parties.json`, () => ({
     registrar: hex32(),
+    registrar2: hex32(),
+    registrar3: hex32(),
     borrower: hex32(),
     lenderA: hex32(),
     lenderB: hex32(),
   }));
-  return Object.fromEntries(
+  const parties = Object.fromEntries(
     Object.entries(raw).map(([k, v]) => [k, new Uint8Array(Buffer.from(v, 'hex'))]),
   ) as Record<PartyId, Uint8Array>;
+  // The committee seats arrived with registry v4; a parties file written before then has only one.
+  // Fill the gap and persist it, so a redeploy does not quietly shrink the committee to one key.
+  const missing = COMMITTEE_SEATS.filter((seat) => !parties[seat]);
+  if (missing.length) {
+    const filled = { ...raw, ...Object.fromEntries(missing.map((seat) => [seat, hex32()])) };
+    fs.writeFileSync(path.join(secretsDir, `${network.name}-parties.json`), JSON.stringify(filled, null, 2), {
+      mode: 0o600,
+    });
+    for (const seat of missing) parties[seat] = new Uint8Array(Buffer.from(filled[seat], 'hex'));
+  }
+  return parties;
 };
 
 const storagePassword = (network: NetworkConfig) =>
@@ -104,6 +121,9 @@ export interface DeploymentRecord {
   status?: string;
   /** Who can replace the contract's verifier keys (the upgrade authority), as read from chain state. */
   maintenanceAuthority?: { committeeSize: number; threshold: number; note: string };
+  /** The registrar committee this registry was deployed with: key commitments, not secrets.
+   *  verify:onchain asserts the on-chain committee tree still holds exactly these. */
+  registrarCommittee?: { threshold: number; members: string[]; note: string };
   contractAddress: string;
   deployTxId: string;
   /** Transaction hash as used by the indexer and explorer (differs from the tx identifier). */

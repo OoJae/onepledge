@@ -22,6 +22,127 @@
       }
     },
     {
+      "name": "committeeLeaf",
+      "pure": true,
+      "proof": false,
+      "arguments": [
+        {
+          "name": "epoch",
+          "type": {
+            "type-name": "Uint",
+            "maxval": 18446744073709551615
+          }
+        },
+        {
+          "name": "member",
+          "type": {
+            "type-name": "Bytes",
+            "length": 32
+          }
+        }
+      ],
+      "result-type": {
+        "type-name": "Bytes",
+        "length": 32
+      }
+    },
+    {
+      "name": "admitAction",
+      "pure": true,
+      "proof": false,
+      "arguments": [
+        {
+          "name": "epoch",
+          "type": {
+            "type-name": "Uint",
+            "maxval": 18446744073709551615
+          }
+        },
+        {
+          "name": "lender",
+          "type": {
+            "type-name": "Bytes",
+            "length": 32
+          }
+        },
+        {
+          "name": "encryptionKey",
+          "type": {
+            "type-name": "Bytes",
+            "length": 32
+          }
+        }
+      ],
+      "result-type": {
+        "type-name": "Bytes",
+        "length": 32
+      }
+    },
+    {
+      "name": "rotateAction",
+      "pure": true,
+      "proof": false,
+      "arguments": [
+        {
+          "name": "epoch",
+          "type": {
+            "type-name": "Uint",
+            "maxval": 18446744073709551615
+          }
+        },
+        {
+          "name": "member0",
+          "type": {
+            "type-name": "Bytes",
+            "length": 32
+          }
+        },
+        {
+          "name": "member1",
+          "type": {
+            "type-name": "Bytes",
+            "length": 32
+          }
+        },
+        {
+          "name": "member2",
+          "type": {
+            "type-name": "Bytes",
+            "length": 32
+          }
+        }
+      ],
+      "result-type": {
+        "type-name": "Bytes",
+        "length": 32
+      }
+    },
+    {
+      "name": "approvalNullifier",
+      "pure": true,
+      "proof": false,
+      "arguments": [
+        {
+          "name": "action",
+          "type": {
+            "type-name": "Bytes",
+            "length": 32
+          }
+        },
+        {
+          "name": "registrarSecret",
+          "type": {
+            "type-name": "Bytes",
+            "length": 32
+          }
+        }
+      ],
+      "result-type": {
+        "type-name": "Bytes",
+        "length": 32
+      }
+    },
+    {
       "name": "borrowerKey",
       "pure": true,
       "proof": false,
@@ -154,6 +275,31 @@
       }
     },
     {
+      "name": "drawId",
+      "pure": true,
+      "proof": false,
+      "arguments": [
+        {
+          "name": "round",
+          "type": {
+            "type-name": "Bytes",
+            "length": 32
+          }
+        },
+        {
+          "name": "lenderSecret",
+          "type": {
+            "type-name": "Bytes",
+            "length": 32
+          }
+        }
+      ],
+      "result-type": {
+        "type-name": "Bytes",
+        "length": 32
+      }
+    },
+    {
       "name": "attestationMessage",
       "pure": true,
       "proof": false,
@@ -261,7 +407,7 @@
       }
     },
     {
-      "name": "admitLender",
+      "name": "approveAdmit",
       "pure": false,
       "proof": true,
       "arguments": [
@@ -287,15 +433,68 @@
       }
     },
     {
-      "name": "rotateRegistrar",
+      "name": "executeAdmit",
       "pure": false,
       "proof": true,
       "arguments": [
         {
-          "name": "next",
+          "name": "lender",
           "type": {
             "type-name": "Bytes",
             "length": 32
+          }
+        },
+        {
+          "name": "encryptionKey",
+          "type": {
+            "type-name": "Bytes",
+            "length": 32
+          }
+        }
+      ],
+      "result-type": {
+        "type-name": "Tuple",
+        "types": [
+        ]
+      }
+    },
+    {
+      "name": "approveRotate",
+      "pure": false,
+      "proof": true,
+      "arguments": [
+        {
+          "name": "members",
+          "type": {
+            "type-name": "Vector",
+            "length": 3,
+            "type": {
+              "type-name": "Bytes",
+              "length": 32
+            }
+          }
+        }
+      ],
+      "result-type": {
+        "type-name": "Tuple",
+        "types": [
+        ]
+      }
+    },
+    {
+      "name": "executeRotate",
+      "pure": false,
+      "proof": true,
+      "arguments": [
+        {
+          "name": "members",
+          "type": {
+            "type-name": "Vector",
+            "length": 3,
+            "type": {
+              "type-name": "Bytes",
+              "length": 32
+            }
           }
         }
       ],
@@ -359,6 +558,32 @@
       "pure": false,
       "proof": true,
       "arguments": [
+      ],
+      "result-type": {
+        "type-name": "Tuple",
+        "types": [
+        ]
+      }
+    },
+    {
+      "name": "proveBorrowingBase",
+      "pure": false,
+      "proof": true,
+      "arguments": [
+        {
+          "name": "round",
+          "type": {
+            "type-name": "Bytes",
+            "length": 32
+          }
+        },
+        {
+          "name": "floor",
+          "type": {
+            "type-name": "Uint",
+            "maxval": 340282366920938463463374607431768211455
+          }
+        }
       ],
       "result-type": {
         "type-name": "Tuple",
@@ -533,6 +758,58 @@
       }
     },
     {
+      "name": "getRegistrarPath",
+      "arguments": [
+      ],
+      "result type": {
+        "type-name": "Struct",
+        "name": "MerkleTreePath",
+        "elements": [
+          {
+            "name": "leaf",
+            "type": {
+              "type-name": "Bytes",
+              "length": 32
+            }
+          },
+          {
+            "name": "path",
+            "type": {
+              "type-name": "Vector",
+              "length": 4,
+              "type": {
+                "type-name": "Struct",
+                "name": "MerkleTreePathEntry",
+                "elements": [
+                  {
+                    "name": "sibling",
+                    "type": {
+                      "type-name": "Struct",
+                      "name": "MerkleTreeDigest",
+                      "elements": [
+                        {
+                          "name": "field",
+                          "type": {
+                            "type-name": "Field"
+                          }
+                        }
+                      ]
+                    }
+                  },
+                  {
+                    "name": "goes_left",
+                    "type": {
+                      "type-name": "Boolean"
+                    }
+                  }
+                ]
+              }
+            }
+          }
+        ]
+      }
+    },
+    {
       "name": "getNoteSalt",
       "arguments": [
       ],
@@ -618,19 +895,174 @@
           }
         ]
       }
+    },
+    {
+      "name": "getPool",
+      "arguments": [
+      ],
+      "result type": {
+        "type-name": "Vector",
+        "length": 4,
+        "type": {
+          "type-name": "Struct",
+          "name": "PoolItem",
+          "elements": [
+            {
+              "name": "tag",
+              "type": {
+                "type-name": "Bytes",
+                "length": 32
+              }
+            },
+            {
+              "name": "invoiceCommit",
+              "type": {
+                "type-name": "Bytes",
+                "length": 32
+              }
+            },
+            {
+              "name": "amount",
+              "type": {
+                "type-name": "Uint",
+                "maxval": 18446744073709551615
+              }
+            },
+            {
+              "name": "salt",
+              "type": {
+                "type-name": "Bytes",
+                "length": 32
+              }
+            }
+          ]
+        }
+      }
+    },
+    {
+      "name": "getPoolPaths",
+      "arguments": [
+      ],
+      "result type": {
+        "type-name": "Vector",
+        "length": 4,
+        "type": {
+          "type-name": "Struct",
+          "name": "MerkleTreePath",
+          "elements": [
+            {
+              "name": "leaf",
+              "type": {
+                "type-name": "Bytes",
+                "length": 32
+              }
+            },
+            {
+              "name": "path",
+              "type": {
+                "type-name": "Vector",
+                "length": 16,
+                "type": {
+                  "type-name": "Struct",
+                  "name": "MerkleTreePathEntry",
+                  "elements": [
+                    {
+                      "name": "sibling",
+                      "type": {
+                        "type-name": "Struct",
+                        "name": "MerkleTreeDigest",
+                        "elements": [
+                          {
+                            "name": "field",
+                            "type": {
+                              "type-name": "Field"
+                            }
+                          }
+                        ]
+                      }
+                    },
+                    {
+                      "name": "goes_left",
+                      "type": {
+                        "type-name": "Boolean"
+                      }
+                    }
+                  ]
+                }
+              }
+            }
+          ]
+        }
+      }
     }
   ],
   "contracts": [
   ],
   "ledger": [
     {
-      "name": "registrar",
+      "name": "registrars",
       "index": [
         0,
         0
       ],
       "exported": true,
+      "storage": "HistoricMerkleTree",
+      "depth": 4,
+      "type": {
+        "type-name": "Bytes",
+        "length": 32
+      }
+    },
+    {
+      "name": "committeeEpoch",
+      "index": [
+        0,
+        1
+      ],
+      "exported": true,
+      "storage": "Counter"
+    },
+    {
+      "name": "threshold",
+      "index": [
+        0,
+        2
+      ],
+      "exported": true,
       "storage": "Cell",
+      "type": {
+        "type-name": "Uint",
+        "maxval": 255
+      }
+    },
+    {
+      "name": "proposals",
+      "index": [
+        0,
+        3
+      ],
+      "exported": true,
+      "storage": "Map",
+      "key": {
+        "type-name": "Bytes",
+        "length": 32
+      },
+      "value": {
+        "type-name": "Set",
+        "type": {
+          "type-name": "Bytes",
+          "length": 32
+        }
+      }
+    },
+    {
+      "name": "executed",
+      "index": [
+        0,
+        4
+      ],
+      "exported": true,
+      "storage": "Set",
       "type": {
         "type-name": "Bytes",
         "length": 32
@@ -639,8 +1071,8 @@
     {
       "name": "tagAuthority",
       "index": [
-        1,
-        0
+        0,
+        5
       ],
       "exported": true,
       "storage": "Cell",
@@ -656,8 +1088,8 @@
     {
       "name": "windowStart",
       "index": [
-        1,
-        1
+        0,
+        6
       ],
       "exported": true,
       "storage": "Cell",
@@ -670,7 +1102,7 @@
       "name": "windowEnd",
       "index": [
         1,
-        2
+        0
       ],
       "exported": true,
       "storage": "Cell",
@@ -683,7 +1115,7 @@
       "name": "lenders",
       "index": [
         1,
-        3
+        1
       ],
       "exported": true,
       "storage": "HistoricMerkleTree",
@@ -697,7 +1129,7 @@
       "name": "lenderEncryptionKeys",
       "index": [
         1,
-        4
+        2
       ],
       "exported": true,
       "storage": "Map",
@@ -714,7 +1146,7 @@
       "name": "deliveries",
       "index": [
         1,
-        5
+        3
       ],
       "exported": true,
       "storage": "Map",
@@ -731,7 +1163,7 @@
       "name": "tags",
       "index": [
         1,
-        6
+        4
       ],
       "exported": true,
       "storage": "Set",
@@ -744,7 +1176,7 @@
       "name": "notes",
       "index": [
         1,
-        7
+        5
       ],
       "exported": true,
       "storage": "HistoricMerkleTree",
@@ -758,7 +1190,7 @@
       "name": "releases",
       "index": [
         1,
-        8
+        6
       ],
       "exported": true,
       "storage": "Set",
@@ -771,7 +1203,7 @@
       "name": "accepted",
       "index": [
         1,
-        9
+        7
       ],
       "exported": true,
       "storage": "Set",
@@ -784,7 +1216,7 @@
       "name": "declined",
       "index": [
         1,
-        10
+        8
       ],
       "exported": true,
       "storage": "Set",
@@ -794,10 +1226,43 @@
       }
     },
     {
+      "name": "draws",
+      "index": [
+        1,
+        9
+      ],
+      "exported": true,
+      "storage": "Map",
+      "key": {
+        "type-name": "Bytes",
+        "length": 32
+      },
+      "value": {
+        "type-name": "Struct",
+        "name": "DrawRecord",
+        "elements": [
+          {
+            "name": "round",
+            "type": {
+              "type-name": "Bytes",
+              "length": 32
+            }
+          },
+          {
+            "name": "floor",
+            "type": {
+              "type-name": "Uint",
+              "maxval": 340282366920938463463374607431768211455
+            }
+          }
+        ]
+      }
+    },
+    {
       "name": "pledgeCount",
       "index": [
         1,
-        11
+        10
       ],
       "exported": true,
       "storage": "Counter"
@@ -806,7 +1271,7 @@
       "name": "releaseCount",
       "index": [
         1,
-        12
+        11
       ],
       "exported": true,
       "storage": "Counter"
@@ -815,13 +1280,22 @@
       "name": "acceptCount",
       "index": [
         1,
-        13
+        12
       ],
       "exported": true,
       "storage": "Counter"
     },
     {
       "name": "declineCount",
+      "index": [
+        1,
+        13
+      ],
+      "exported": true,
+      "storage": "Counter"
+    },
+    {
+      "name": "drawCount",
       "index": [
         1,
         14
