@@ -70,7 +70,7 @@
 <section class="slide">
   <div class="brand"><span class="mark">1</span>OnePledge</div>
   <div style="margin-top:auto;margin-bottom:auto">
-    <p class="kicker">Midnight Buildathon · Wave 1</p>
+    <p class="kicker">Midnight Buildathon · Wave 2</p>
     <h1>One pledge per invoice.<br/>No lender sees another's book.</h1>
     <p class="lede">A registry on Midnight that refuses to let the same receivable be financed twice, while each lender sees only its own deals.</p>
     <p style="margin-top:36px"><span class="chip">Try it: onepledge.vercel.app</span><span class="chip">github.com/OoJae/onepledge</span></p>
@@ -172,10 +172,37 @@
 
 <!-- 7 -->
 <section class="slide">
+  <p class="kicker">Shipped in Wave 2</p>
+  <h2>A pledge the lender never agreed to.</h2>
+  <div class="grid2" style="margin-bottom:28px">
+    <div class="card fix">
+      <h3>What Wave 1 shipped, and admitted</h3>
+      <p>A borrower could pledge an invoice to any admitted lender without asking. The tag was used up
+      forever, whether or not that lender ever financed it, and nothing could undo it. We published it
+      ourselves as F10.</p>
+    </div>
+    <div class="card">
+      <h3>Wave 2: the lender decides</h3>
+      <p><span class="mono">acceptPledge</span> and <span class="mono">declinePledge</span>. The lender of
+      record proves it is the lender the same way a release does. Declining removes the tag, so the
+      receivable can be financed elsewhere. A decision is an opaque nullifier: the ledger never says which
+      lender decided, or on what.</p>
+    </div>
+  </div>
+  <div class="card">
+    <h3>Why this answers the hardest question about the idea</h3>
+    <p>A shared registry sounds like it needs the whole market to join first. It does not. It works with
+    <strong>two</strong> lenders, because the only thing either one learns is one fact about one invoice:
+    already pledged. No consortium has to form, and no participant exposes its book to join.</p>
+  </div>
+  <div class="footer"><span>registry v3</span><span>7</span></div>
+</section>
+
+<section class="slide">
   <p class="kicker">Tested and self-audited</p>
   <h2>We attacked it before anyone else could.</h2>
   <div class="grid3" style="margin-bottom:28px">
-    <div class="card"><div class="stat">176</div><div class="statlabel">tests: adversarial witnesses, forgery, privacy allowlists</div></div>
+    <div class="card"><div class="stat">192</div><div class="statlabel">tests: adversarial witnesses, forgery, privacy allowlists</div></div>
     <div class="card"><div class="stat">88</div><div class="statlabel">findings from our own adversarial self-review, each challenged by a skeptic</div></div>
     <div class="card"><div class="stat">1</div><div class="statlabel">critical bug found in v1, fixed in v2, disclosed in full</div></div>
   </div>
@@ -188,12 +215,12 @@
       <h3>Honest limits</h3>
       <ul class="tight">
         <li>Single tag authority (threshold in Wave 3)</li>
-        <li>No lender consent step or void path yet (Wave 2)</li>
+        <li>No decision deadline: an undecided pledge holds the tag</li>
         <li>Synthetic KSeF numbers until the test-environment adapter</li>
       </ul>
     </div>
   </div>
-  <div class="footer"><span>docs/security-review.md</span><span>7</span></div>
+  <div class="footer"><span>docs/security-review.md</span><span>8</span></div>
 </section>
 
 <!-- 8 -->
@@ -215,7 +242,7 @@
       </ul>
     </div>
   </div>
-  <div class="footer"><span>OnePledge</span><span>8</span></div>
+  <div class="footer"><span>OnePledge</span><span>9</span></div>
 </section>
 
 <!-- 9 -->
@@ -240,7 +267,7 @@
       </dl>
     </div>
   </div>
-  <div class="footer"><span>This project is built on the Midnight Network.</span><span>9</span></div>
+  <div class="footer"><span>This project is built on the Midnight Network.</span><span>10</span></div>
 </section>
 
 </body>
