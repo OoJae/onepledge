@@ -49,7 +49,9 @@ const hex = (b: Uint8Array) => Buffer.from(b).toString('hex');
 const mint = (index: number) => {
   // Acceptance days must fall inside the registry's window; these sit in September 2026.
   const day = String(10 + (index % 18)).padStart(2, '0');
-  const ksefNumber = syntheticKsefNumber('5265877635', `2026-09-${day}`, `D${index.toString(16).toUpperCase().padStart(2, '0')}${randomBytes(4).toString('hex').toUpperCase()}`);
+  // The technical segment is exactly 12 uppercase hex characters; 'D' marks these as demo-minted.
+  const technical = `D${index.toString(16).padStart(2, '0')}${randomBytes(6).toString('hex')}`.toUpperCase().slice(0, 12);
+  const ksefNumber = syntheticKsefNumber('5265877635', `2026-09-${day}`, technical);
   const parsed = parseKsefNumber(ksefNumber);
   const amountGrosz = String(5_000_000 + index * 1_750_000);
   const fields: InvoiceFields = {

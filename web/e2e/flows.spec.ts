@@ -3,6 +3,7 @@
 import { expect, test } from '@playwright/test';
 import AxeBuilder from '@axe-core/playwright';
 import { brandRoutes, routes, watchPage } from './helpers.ts';
+import deployment from '../../deployments/preprod.json' with { type: 'json' };
 
 test('walkthrough: pledge accepted, double pledge refused, lender accepts, release accepted', async ({ page }) => {
   const problems = await watchPage(page);
@@ -83,7 +84,9 @@ test('landing: thesis, calls to action and real Preprod proof', async ({ page })
   await expect(page.getByRole('heading', { level: 1 })).toHaveText(/One invoice\.\s*One pledge\./);
   await expect(page.getByRole('link', { name: 'Try the pledge' }).first()).toHaveAttribute('href', '/demo');
   await expect(page.getByText('refused before proving')).toBeVisible();
-  await expect(page.locator('a[href*="/transactions/cad891d7"]')).toBeVisible();
+  // Read the hash from the deployment record rather than pinning one: the landing page renders
+  // whatever is deployed, so a hardcoded hash silently goes stale at the next redeploy.
+  await expect(page.locator(`a[href*="/transactions/${deployment.deployTxHash.slice(0, 8)}"]`)).toBeVisible();
   const wasm = [] as string[];
   page.on('request', (r) => r.url().endsWith('.wasm') && wasm.push(r.url()));
   await page.mouse.wheel(0, 4000);

@@ -28,19 +28,22 @@ Built for the Midnight Buildathon (AKINDO WaveHack), Wave 1.
 ## Live on Midnight Preprod
 
 <!-- v2-deployment:start -->
-**Registry v2** · contract [`567df565569f032c0a32a0029fb2fdea9befb8b8ccccb3fb86736f10030c2355`](https://preprod.midnightexplorer.com/contracts/567df565569f032c0a32a0029fb2fdea9befb8b8ccccb3fb86736f10030c2355) · deployed 2026-09-14 in block 2550929 · upgrade key: 1-of-1 deployer key
+**Registry v3** · contract [`488f67156c541957614bcd7be7e88593d5fc68bb1188fe18893c0485f0ba4900`](https://preprod.midnightexplorer.com/contracts/488f67156c541957614bcd7be7e88593d5fc68bb1188fe18893c0485f0ba4900) · deployed 2026-10-15 in block 2991455 · upgrade key: 1-of-1 deployer key
 
 | Step | Circuit | Transaction | Block | Proved in | Finalized after |
 |---|---|---|---|---|---|
-| Deploy registry v2 | constructor | [`cad891d71cd3…`](https://preprod.midnightexplorer.com/transactions/cad891d71cd31d93f2647ad27a2aea3df5f3d5281675003cf121fead8d733e21) | 2550929 | | |
-| Registrar admits lender A | `admitLender` | [`eb29c1924977…`](https://preprod.midnightexplorer.com/transactions/eb29c19249774d45570bb5efc999fb574b24e7bba1a2b4daf99c1951c0f0ebda) | 2550969 | 1 s | 23.4 s |
-| Registrar admits lender B | `admitLender` | [`20cc71fccbab…`](https://preprod.midnightexplorer.com/transactions/20cc71fccbab0c2bc045c327c7a4a3477c62a9bcddb96695910bdc7d6c6ffc5b) | 2550973 | 0.9 s | 22.9 s |
-| Borrower pledges invoice 1 to lender A | `pledge` | [`b94a46c0dcb7…`](https://preprod.midnightexplorer.com/transactions/b94a46c0dcb7613b2acc381594201f6af6d602d1a5181a3f225023ff095022cf) | 2550977 | 4.5 s | 23.3 s |
-| Borrower re-pledges invoice 1 to lender B | `pledge` | none: the circuit's `Receivable already pledged` assert failed against the live Preprod state, so no proof or transaction could be built | | | |
-| Borrower pledges invoice 2 to lender B | `pledge` | [`219fe6b341ff…`](https://preprod.midnightexplorer.com/transactions/219fe6b341ff225650a03ba4e1cca7bacc3ce9a618867c2872657cf67725f62d) | 2550981 | 2.7 s | 23.6 s |
-| Lender A releases invoice 1 | `release` | [`8a0eaeecaeb2…`](https://preprod.midnightexplorer.com/transactions/8a0eaeecaeb29f5b74fa4779501021f6b1e798974b56f4fe03dbd664dc8aa2fc) | 2550985 | 2.7 s | 21.9 s |
+| Deploy registry v3 | constructor | [`b48711e29351…`](https://preprod.midnightexplorer.com/transactions/b48711e29351677ef858376009d6ffba5d0651239462b4b2e34beac244d916bd) | 2991455 | | |
+| Registrar admits lender A | `admitLender` | [`c7f2edb94fb5…`](https://preprod.midnightexplorer.com/transactions/c7f2edb94fb5e6d04e796490913363026773483212c717315470528f0b8401ae) | 2991568 | 0.6 s | 28.4 s |
+| Registrar admits lender B | `admitLender` | [`dac7e2d3ab3c…`](https://preprod.midnightexplorer.com/transactions/dac7e2d3ab3c530fdec6015aeb0a6c660b75a9f2ba7f2adad184b0dea4902083) | 2991573 | 0.7 s | 29 s |
+| Borrower pledges invoice 1 to lender A | `pledge` | [`d7012e0af2de…`](https://preprod.midnightexplorer.com/transactions/d7012e0af2de4282b4b8d6e330cdb41ffbaa80ba83a4789d1345833b8a7bda26) | 2991579 | 2.7 s | 35.9 s |
+| Borrower re-pledges invoice 1 to lender B | `pledge` | none: rejected before proving: Receivable already pledged, so no proof or transaction could be built | | | |
+| Lender A accepts invoice 1 | `acceptPledge` | [`55d65d52366e…`](https://preprod.midnightexplorer.com/transactions/55d65d52366ec66f11810f6c4c84911a547120df3dbc7d2ec5d685e711943fdf) | 2991584 | 2.2 s | 28.2 s |
+| Borrower pledges invoice 2 to lender B | `pledge` | [`376c53a7a468…`](https://preprod.midnightexplorer.com/transactions/376c53a7a4680f975ef612cae34f501b5895de5a40547fb27452b44af46d6be5) | 2991589 | 1.8 s | 28.5 s |
+| Lender B declines invoice 2, freeing the receivable | `declinePledge` | [`a7b3ecff91b0…`](https://preprod.midnightexplorer.com/transactions/a7b3ecff91b05aef406beb014de80edf7ded0a1783b08e67094a487ecfec5175) | 2991595 | 1.9 s | 33.7 s |
+| Borrower pledges the freed invoice 2 to lender A | `pledge` | [`edb90b824280…`](https://preprod.midnightexplorer.com/transactions/edb90b824280d0654d5544a131f147a43459178bf0985b4bc9bed4fbc961c30d) | 2991600 | 1.8 s | 31.1 s |
+| Lender A releases invoice 1 | `release` | [`7917e51555f9…`](https://preprod.midnightexplorer.com/transactions/7917e51555f917913427dcc4b6b8caeb011bc62b15acdc45ce89c3117a43f5f7) | 2991605 | 2.2 s | 28.7 s |
 
-Step labels come from the operator's run log (`npm run demo`), not from the chain: on chain these are plain `admitLender`, `pledge` and `release` calls that do not say which lender or invoice they concern. Proving ran on a local proof server (Docker, Apple silicon laptop); "finalized after" is from starting the call to the indexer reporting it.
+Step labels come from the operator's run log (`npm run demo`), not from the chain: on chain these are plain circuit calls that do not say which lender or invoice they concern. Proving ran on a local proof server (Docker, Apple silicon laptop); "finalized after" is from starting the call to the indexer reporting it.
 <!-- v2-deployment:end -->
 
 **Registry v1 is deprecated.** The Wave 1 security review found that v1 signed only 248 of the tag's 256 bits, so one attestation could be pledged again with a different last byte. v2 fixes it and adds deployment binding and expiry; see [docs/security-review.md](docs/security-review.md). The v1 record is kept in [`deployments/archive/`](deployments/archive/). v1 is still callable on Preprod (contracts cannot be deleted, and its verifier keys were not removed) and shares v2's tag authority and acceptance window; the tag authority now signs only v2 attestations, which name the v2 address. Do not use v1.

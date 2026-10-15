@@ -1,0 +1,168 @@
+{
+  "note": "Testnet demo only. Synthetic KSeF numbers, and the borrower secret below is published on purpose so anyone can pledge from the desk. Each attestation is single-use: once its tag is pledged the registry refuses it forever.",
+  "registryVersion": "v3",
+  "contractAddress": "488f67156c541957614bcd7be7e88593d5fc68bb1188fe18893c0485f0ba4900",
+  "borrowerSecret": "6f6e65706c656467652d64656d6f2d626f72726f7765722d76332d2d2d2d2d2d",
+  "lenders": [
+    {
+      "label": "Lender A",
+      "key": "7e963c5c450b5f9ced94006ab09532e7f40df4182cd7e9bea8b12f985c6ec802"
+    },
+    {
+      "label": "Lender B",
+      "key": "ef0edd8d6cc0930ac8abe218735f4dda792537322a8f4175b1d410998d38d9bd"
+    }
+  ],
+  "attestations": [
+    {
+      "fields": {
+        "ksefNumber": "5265877635-20260910-D00D19621B48-1D",
+        "sellerNip": "5265877635",
+        "debtorNip": "7010002139",
+        "amountGrosz": "5000000",
+        "currency": "PLN",
+        "dueDate": "2026-11-30"
+      },
+      "salt": "a7b5d613fbaecf06071e8d4ab9a11f74c5e6d0969c42a0df2a757762e5ecf749",
+      "attestation": {
+        "tag": "4916b335cb9d4eaa1cbdfbd7dc1c4e741de0ded6d52b866977c0eb330dd53af9",
+        "invoiceCommit": "c0c80f6c8576c936cfc2d140e9120df30ac5da5c545c5f9bae0500e4a62bd44b",
+        "acceptanceDay": 20706,
+        "expiresAt": "1807660800",
+        "borrower": "62e36f4a9c337338aa03b0fdffdff5344bebb5fe84c213505c006000c1cbf27d",
+        "signature": {
+          "announcement": {
+            "x": "16739468056896266426588880724825351909243978305158265223928462917505843817444",
+            "y": "2810267524509422171356299266685644088269654703021920012991605938464556529439"
+          },
+          "response": "6096124243956654102647100081645803981543528724250457748025700747006330245875"
+        }
+      }
+    },
+    {
+      "fields": {
+        "ksefNumber": "5265877635-20260911-D01A803781FF-5D",
+        "sellerNip": "5265877635",
+        "debtorNip": "7010002139",
+        "amountGrosz": "6750000",
+        "currency": "PLN",
+        "dueDate": "2026-11-30"
+      },
+      "salt": "0f0dd33861a3a7ae0e84ff903b4773c8e423e945af10f82b82f4393e9004410a",
+      "attestation": {
+        "tag": "990b6dd159dbf2903206432e7eadce62080cbcff2776f38de2c1d8a63c510073",
+        "invoiceCommit": "852d2b0980906afb6e5690152382d6fa81ec480b0d69f04ac42fa4eefeae1b25",
+        "acceptanceDay": 20707,
+        "expiresAt": "1807660800",
+        "borrower": "62e36f4a9c337338aa03b0fdffdff5344bebb5fe84c213505c006000c1cbf27d",
+        "signature": {
+          "announcement": {
+            "x": "24764175245348864848201340832998241807812260549872825353320172881652105597112",
+            "y": "51389635499662739555209184904223573372250992296714797585477028870639231888499"
+          },
+          "response": "3878194127867028284391094614456864437278230686310893725755769176199893482626"
+        }
+      }
+    },
+    {
+      "fields": {
+        "ksefNumber": "5265877635-20260912-D02F5DA07AFA-28",
+        "sellerNip": "5265877635",
+        "debtorNip": "7010002139",
+        "amountGrosz": "8500000",
+        "currency": "PLN",
+        "dueDate": "2026-11-30"
+      },
+      "salt": "3af86282a08a43281cd2e9900e552597b2a4430fd22afb2f3c189c8bb93fe432",
+      "attestation": {
+        "tag": "c0835bedb32d32fccc993f7ccb6a36d5486c6dd27037a0ac98d6d74c984b55cc",
+        "invoiceCommit": "840a03216fdd243f51a823b28e4c071d02ffe04b999ad3562dc8d4d45a86e595",
+        "acceptanceDay": 20708,
+        "expiresAt": "1807660800",
+        "borrower": "62e36f4a9c337338aa03b0fdffdff5344bebb5fe84c213505c006000c1cbf27d",
+        "signature": {
+          "announcement": {
+            "x": "36562522135792431000143852532043885630131933304796764758886082756225434345171",
+            "y": "1864248564652555302132503439442136471506350871893162883235143254753838482785"
+          },
+          "response": "4920857041515714976356456880678211661989211694446379363959929411849947595351"
+        }
+      }
+    },
+    {
+      "fields": {
+        "ksefNumber": "5265877635-20260913-D03A4F23A29C-9A",
+        "sellerNip": "5265877635",
+        "debtorNip": "7010002139",
+        "amountGrosz": "10250000",
+        "currency": "PLN",
+        "dueDate": "2026-11-30"
+      },
+      "salt": "f0715a1088cd6f9a476c3ca713c0f665ad99618e3f5b4b7511dbe66025abff2b",
+      "attestation": {
+        "tag": "c3081cbebbc9fc6e8a0bbdfb653d0d0cacc6ef9b81d201650beef96d5603ff4c",
+        "invoiceCommit": "021a7be603cbe6c2dafcec67081d5cf4fc44e96f82959f3a318dc96921ec119d",
+        "acceptanceDay": 20709,
+        "expiresAt": "1807660800",
+        "borrower": "62e36f4a9c337338aa03b0fdffdff5344bebb5fe84c213505c006000c1cbf27d",
+        "signature": {
+          "announcement": {
+            "x": "33534957549264808632930919452709207326032709495047671305482183307858680814909",
+            "y": "41613993338317308697757173115821752035507009235129450354106349218823855035029"
+          },
+          "response": "1115720422455019473742693872793668917531654250191421927417374629028833831226"
+        }
+      }
+    },
+    {
+      "fields": {
+        "ksefNumber": "5265877635-20260914-D04A98045DF0-D2",
+        "sellerNip": "5265877635",
+        "debtorNip": "7010002139",
+        "amountGrosz": "12000000",
+        "currency": "PLN",
+        "dueDate": "2026-11-30"
+      },
+      "salt": "08189c815bf5eb946f46253a12aa81b4702e0758016b7add4e2e4ee85904b2d3",
+      "attestation": {
+        "tag": "e2033de73bdeefbe8d91ef65dcad60cc7a2493eeff97c1c2dba02bf6dca7571e",
+        "invoiceCommit": "f7b04efd3a6f49d46219a03ea9b5315347596b3e7aa9149d3870e8af7ccbdc79",
+        "acceptanceDay": 20710,
+        "expiresAt": "1807660800",
+        "borrower": "62e36f4a9c337338aa03b0fdffdff5344bebb5fe84c213505c006000c1cbf27d",
+        "signature": {
+          "announcement": {
+            "x": "21641530698825500187024479733639491601035892311181794132618311256122386518540",
+            "y": "24546316849818996471105142166870944320126673766275070892749072425627770935530"
+          },
+          "response": "2211401849479195461752168514790337162299151500556157981698123716301512440404"
+        }
+      }
+    },
+    {
+      "fields": {
+        "ksefNumber": "5265877635-20260915-D05AB56C22C8-77",
+        "sellerNip": "5265877635",
+        "debtorNip": "7010002139",
+        "amountGrosz": "13750000",
+        "currency": "PLN",
+        "dueDate": "2026-11-30"
+      },
+      "salt": "3d544fce743dc9fa2de2da0d6c8305b4fadb1771a560c356b998f8a14a91c03f",
+      "attestation": {
+        "tag": "6dc04232493836c1cea991544137c2867ec5962efebc2278437b381adfd06b57",
+        "invoiceCommit": "1cbe624283968b472778f4bbe87cdc7b8173e409f11dff68647ec7ce0e26a7cc",
+        "acceptanceDay": 20711,
+        "expiresAt": "1807660800",
+        "borrower": "62e36f4a9c337338aa03b0fdffdff5344bebb5fe84c213505c006000c1cbf27d",
+        "signature": {
+          "announcement": {
+            "x": "27645658753106512943807606167069337091220522084359567513637989636729124671284",
+            "y": "29014127632280946306401583581287192298186003283990204017739874658448664058293"
+          },
+          "response": "2325867174636607578401652805583685817960019444158339538620257373485302232253"
+        }
+      }
+    }
+  ]
+}
