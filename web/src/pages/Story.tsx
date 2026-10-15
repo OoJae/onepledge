@@ -652,8 +652,16 @@ function BorrowingBase({ run, runs, push, register }: Act) {
             </li>
           </ul>
           <p className="muted small">
-            One honest limit: on this page the circuits run against an in-memory ledger, so a refusal is the circuit's
-            own assertion rather than a verifier rejecting a proof. The assertions are the ones the deployed contract
+            Two honest limits, and the first belongs to the design rather than to this page. A draw proves the four
+            notes are on the ledger, are this lender's and clear the floor; it does not prove they are still
+            outstanding. Accepts, declines and releases live in sets, and a circuit can only ask a set about a key it
+            discloses — so checking them would publish the nullifier that groups a lender's book, which is the one
+            thing this registry exists to prevent. A funder is therefore trusting the lender not to count a receivable
+            it declined or has already been paid for. The threat model says the same.
+          </p>
+          <p className="muted small">
+            The second is this page: the circuits run against an in-memory ledger, so a refusal is the circuit's own
+            assertion rather than a verifier rejecting a proof. The assertions are the ones the deployed contract
             makes. A real chain also sees who submitted the transaction, and this page has no network layer to show
             that in.
           </p>

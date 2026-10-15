@@ -17,7 +17,7 @@ This project is built on the Midnight Network.
 |---|---|
 | Start here (3 minutes, no install) | 1. [Walkthrough](https://onepledge.vercel.app/demo): pledge, refused double pledge, release. 2. [Attacks](https://onepledge.vercel.app/attacks): why a public hash registry fails. 3. [Live registry](https://onepledge.vercel.app/live): the deployed Preprod contract, read in your browser. Then [How to evaluate](#how-to-evaluate). |
 | Live demo | [onepledge.vercel.app](https://onepledge.vercel.app): the landing page's 3D scene tells the pledge in four beats; the walkthrough runs the compiled circuits in your browser; the Live page reads Preprod; `/desk` submits a real pledge from your own wallet |
-| Proof | The [deployment table below](#live-on-midnight-preprod) is generated from `deployments/preprod.json`, never typed by hand · `npm run verify:onchain` matches every circuit's verifier key against the chain · 270 tests in CI · our own review found and fixed a critical bug ([F01](docs/security-review.md#f01-critical-one-attestation-could-be-pledged-256-times)) |
+| Proof | The [deployment table below](#live-on-midnight-preprod) is generated from `deployments/preprod.json`, never typed by hand · `npm run verify:onchain` matches every circuit's verifier key against the chain · 272 tests in CI · our own review found and fixed a critical bug ([F01](docs/security-review.md#f01-critical-one-attestation-could-be-pledged-256-times)) |
 | Demo video | Wave 1: [youtu.be/tftA-AMT9VQ](https://youtu.be/tftA-AMT9VQ) (1:42): the problem, the refused second pledge, and the Preprod transactions behind it. The Wave 2 video is not recorded yet. |
 | Deck | [docs/OnePledge-Wave1-deck.pdf](docs/OnePledge-Wave1-deck.pdf) (Wave 1) |
 | Submissions | [Wave 1](docs/submission/wave1.md) · [Wave 2](docs/submission/wave2.md) |
@@ -374,7 +374,7 @@ Requires Node.js 22.12+ and npm.
 
 ```bash
 npm ci
-npm test                          # 270 tests: contract (189) + attester (81)
+npm test                          # 272 tests: contract (189) + attester (83)
 npm run typecheck
 npm run build --workspace web     # web app
 npm run verify:onchain            # read-only check against Preprod
@@ -418,7 +418,7 @@ ONEPLEDGE_NETWORK=undeployed npm run demo --workspace cli
 
 ## Tests
 
-270 tests, every one of them run by CI on every push. The counts below are what `npm test` prints.
+272 tests, every one of them run by CI on every push. The counts below are what `npm test` prints.
 
 | Suite | Tests | Covers |
 |---|---:|---|
@@ -427,7 +427,7 @@ ONEPLEDGE_NETWORK=undeployed npm run demo --workspace cli
 | [`privacy.test.ts`](contract/src/test/privacy.test.ts) | 21 | Allowlist of every public value in the transcript of `pledge`, `release`, `acceptPledge`, `declinePledge`, `approveAdmit`, `executeAdmit`, rotation and `proveBorrowingBase`; that a draw publishes no amount and no pool note; that two draws in different rounds are unlinkable; that no committee secret, registrar key or leaf appears in an approval; positive controls proving each search can fail |
 | [`ksef.test.ts`](attester/test/ksef.test.ts) | 23 | Official Ministry of Finance example, CRC-8 check value, malformed spellings, NIP check digit, calendar validation |
 | [`tag.test.ts`](attester/test/tag.test.ts) | 17 | Tag determinism and keying, canonical-spelling enforcement, commitment hiding and binding for every field |
-| [`ksef-client.test.ts`](attester/test/ksef-client.test.ts) | 27 | The read-only KSeF 2.0 adapter against an injected `fetch` and hand-authored fixtures: the anonymous challenge call, metadata lookup by KSeF number, legacy number forms, subject and date filters, token-required and malformed-response errors, and every API error shape. It has never spoken to a live KSeF — see below. |
+| [`ksef-client.test.ts`](attester/test/ksef-client.test.ts) | 29 | The read-only KSeF 2.0 adapter against an injected `fetch` and hand-authored fixtures: the anonymous challenge call, metadata lookup by KSeF number, legacy number forms, subject and date filters, token-required and malformed-response errors, and every API error shape. It has never spoken to a live KSeF — see below. |
 | [`delivery.test.ts`](attester/test/delivery.test.ts) | 8 | Sealed openings round-trip, a full 64-bit amount survives, another lender learns nothing, garbage returns `undefined` rather than throwing so a scan never breaks, a tampered ciphertext fails, two deliveries to one lender share no bytes |
 | [`signing.test.ts`](attester/test/signing.test.ts) | 6 | Schnorr equation, scalar ranges, nonce freshness, wrong key and message |
 

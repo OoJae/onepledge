@@ -577,13 +577,30 @@ export const ksefClient = (options: KsefClientOptions): KsefClient => {
         'invoices/query/metadata invoice acquisitionDate',
       );
       const acquisitionDay = utcDay(acquisitionDate, 'acquisitionDate');
-      // The check this adapter exists for. Both days are read in UTC: KSeF documents its query windows
-      // and its error timestamps as UTC, so that is the defensible reading. The ministry's
-      // numer-ksef.md does not state the zone of the date it embeds, though, so if numbers are in fact
-      // stamped in Europe/Warsaw local time this would fire falsely for invoices accepted in the first
-      // hour or two of a Warsaw day. Unverifiable without credentials; it is the first thing to check
-      // against a recorded response.
-      if (acquisitionDay !== number.acceptanceDay) {
+      // The check this adapter exists for, and it is deliberately loose by exactly one day.
+      //
+      // TWO UNVERIFIED THINGS, both of which would make an exact comparison fire on a healthy
+      // invoice, and neither of which can be settled from here:
+      //
+      //   1. WHICH INSTANT THE NUMBER EMBEDS. numer-ksef.md calls the RRRRMMDD segment the date the
+      //      invoice was accepted for further processing ("data przyjecia faktury ... do dalszego
+      //      przetwarzania"). `acquisitionDate` is the instant KSeF assigned the number. Those are
+      //      different instants by design, as `windowAround` above already says, so an invoice
+      //      accepted at 23:58 and numbered at 00:12 legitimately has an embedded day one behind its
+      //      acquisitionDate. An exact comparison would reject it.
+      //   2. WHICH ZONE EITHER IS IN. KSeF documents its query windows and error timestamps as UTC,
+      //      which is why both sides are read in UTC here, but numer-ksef.md does not state the zone
+      //      of the date it embeds. If numbers are stamped in Europe/Warsaw, an exact comparison
+      //      would reject every invoice accepted in the first one or two hours of a Warsaw day.
+      //
+      // So the tolerance is one day in either direction. That keeps the property this check exists
+      // for — a number whose embedded day is weeks or months from KSeF's own record is identifier
+      // confusion, and minting a tag over it would be minting a tag over an invoice nobody can agree
+      // on — while not turning a fourteen-minute clock difference or an unverified timezone into a
+      // hard failure on a real invoice. Narrow it to an exact match once a recorded response from the
+      // TEST environment settles both questions; that is the first thing to check with credentials.
+      const dayGap = acquisitionDay - number.acceptanceDay;
+      if (dayGap < -1n || dayGap > 1n) {
         throw new KsefAcceptanceDateMismatchError(number.canonical, number.acceptanceDate, acquisitionDate);
       }
       return { number, metadata, acquisitionDay };

@@ -537,6 +537,17 @@ section.columns {
 .log li.rejected {
   border-color: color-mix(in srgb, var(--wax) 45%, var(--rule));
 }
+/* A note is not a step and not a refusal: muted, so it reads as a footnote in the log rather than
+   as a call that failed. */
+.log li.note {
+  border-style: dashed;
+  opacity: 0.78;
+}
+.log li.note .badge {
+  background: transparent;
+  border-color: color-mix(in srgb, var(--paper) 40%, transparent);
+  color: color-mix(in srgb, var(--paper) 70%, transparent);
+}
 
 .tags {
   list-style: none;

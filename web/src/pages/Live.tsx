@@ -245,10 +245,14 @@ export function Live() {
         </p>
         <ol className="log" aria-live="polite">
           {deployment.events.map((e, i) => (
-            <li key={i} className={e.txId ? 'ok' : 'rejected'}>
-              <span className="badge">{e.txId ? e.circuit : 'rejected'}</span>
+            // A step the circuit refused has no txId. An event recorded against the circuit `note`
+            // is neither a step nor a refusal: it is something true about the deployment that would
+            // be misread as a failed call if it wore the same badge, so it says what it is.
+            <li key={i} className={e.circuit === 'note' ? 'note' : e.txId ? 'ok' : 'rejected'}>
+              <span className="badge">{e.circuit === 'note' ? 'note' : e.txId ? e.circuit : 'rejected'}</span>
               <span>
                 {e.label}
+                {e.circuit === 'note' && <span className="muted small"> · {e.outcome}</span>}
                 {e.proveSeconds !== undefined && <span className="muted small"> · proved in {e.proveSeconds}s, finalized after {e.totalSeconds}s</span>}
               </span>
               {e.txHash ? (

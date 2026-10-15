@@ -60,7 +60,7 @@ by trial decryption, with nothing saying who a delivery is for. The amount is at
 and bound into the note commitment, and still never published — a borrowing-base proof is only as honest as
 the amounts it sums.
 
-Nine circuits with proving keys. 270 tests (189 contract, 81 attester), including an allowlist over every
+Nine circuits with proving keys. 272 tests (189 contract, 83 attester), including an allowlist over every
 value in each circuit's public transcript. CI runs three jobs: the unit and browser suites, a real `pledge`
 proof against a proof server, and a local-devnet deploy-and-run of the whole scenario. A wallet-connected
 desk submits a real pledge from the browser.

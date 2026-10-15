@@ -196,8 +196,31 @@ describe('the acceptance-day cross-check', () => {
       const mismatch = error as KsefAcceptanceDateMismatchError;
       expect(mismatch.ksefNumber).toBe(OFFICIAL);
       expect(mismatch.embeddedAcceptanceDate).toBe('2025-08-26');
-      expect(mismatch.acquisitionDate).toBe('2025-08-27T00:12:44.512Z');
+      expect(mismatch.acquisitionDate).toBe('2025-11-14T00:12:44.512Z');
     });
+  });
+
+  it('tolerates one day, because the two dates are different instants by design', async () => {
+    // The number embeds the day the invoice was accepted for processing; acquisitionDate is the
+    // instant the number was assigned. A session straddling midnight puts those on different days,
+    // so an invoice accepted at 23:58 and numbered at 00:12 is healthy and must not be refused.
+    const page = fixture('invoice-metadata-200').body as { invoices: Array<Record<string, unknown>> };
+    for (const acquisitionDate of ['2025-08-27T00:12:44.512Z', '2025-08-25T23:47:01.000Z']) {
+      const { fetch } = stub({ status: 200, body: { ...page, invoices: [{ ...page.invoices[0], acquisitionDate }] } });
+      const found = await ksefClient({ fetch, accessToken: TOKEN }).invoiceMetadata(OFFICIAL);
+      expect(found, `a one-day gap at ${acquisitionDate} should be tolerated`).toBeDefined();
+    }
+  });
+
+  it('is still a hard error two days out, so the tolerance is one day and not open-ended', async () => {
+    const page = fixture('invoice-metadata-200').body as { invoices: Array<Record<string, unknown>> };
+    const { fetch } = stub({
+      status: 200,
+      body: { ...page, invoices: [{ ...page.invoices[0], acquisitionDate: '2025-08-28T00:12:44.512Z' }] },
+    });
+    await expect(ksefClient({ fetch, accessToken: TOKEN }).invoiceMetadata(OFFICIAL)).rejects.toThrow(
+      KsefAcceptanceDateMismatchError,
+    );
   });
 
   it('accepts any instant on the embedded day, whatever the offset it is written in', async () => {
