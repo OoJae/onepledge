@@ -329,6 +329,30 @@
       "txId": "00bfa40df8205806f397fdb81e0cea533a380b9a86bd1f61d4a266ce9b9543308b",
       "outcome": "accepted: SucceedEntirely",
       "at": "2026-10-15T19:28:16.069Z"
+    },
+    {
+      "label": "Remove acceptPledge",
+      "circuit": "maintenance",
+      "txId": "00af83e4f440f8cad49390e489726d96ec67ec28538b213535e575ec0d25c79e00",
+      "txHash": "83deac22a096dffb8fbd297552c8796368d3d7be8e36524fe10e770a42063a18",
+      "blockHeight": 2995859,
+      "outcome": "accepted: SucceedEntirely",
+      "at": "2026-10-15T19:36:46.632Z"
+    },
+    {
+      "label": "Insert acceptPledge",
+      "circuit": "maintenance",
+      "txId": "006c098fcbf07cfaacc2ed21da1d2de8e7ab3ba81763a77e8797612195ce94a8b8",
+      "txHash": "015a159e015b71721cc9ea2fbc90427900d8494cf7f143671aceb8318c17a5f4",
+      "blockHeight": 2995863,
+      "outcome": "accepted: SucceedEntirely",
+      "at": "2026-10-15T19:37:14.660Z"
+    },
+    {
+      "label": "Why the authority counter is at 5",
+      "circuit": "note",
+      "outcome": "After the committee was installed, it was exercised: acceptPledge\u2019s verifier key was removed and re-inserted with two of the three keys, at blocks 2995859 and 2995863, leaving the key byte-identical to the committed file. Nothing about the contract changed, which is the point \u2014 it is how a threshold authority gets proven on a live deployment without risking anything. midnight-js cannot sign either of those updates at any threshold above one, so they went through cli/src/committee.ts, which is now the only tool that can maintain this contract. The authority\u2019s counter moved once per applied update: 2 before the install, 3 after it, then 4 and 5.",
+      "at": "2026-10-15T19:37:17.021Z"
     }
   ]
 }
