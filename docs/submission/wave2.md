@@ -34,42 +34,45 @@ Privacy · DeFi · Market Infrastructure
 
 ## Updates in this Wave
 
-*2,830 characters. Cap 3,000.*
+*2,972 characters. Cap 3,000.*
 
 Wave 1 shipped the registry: one pledge per receivable, proven in zero knowledge, with no lender seeing
-another's book. Wave 2 shipped the three things a real lender asks about next.
+another's book. Wave 2 shipped the three things a real lender asks about next — and then found and fixed a
+bug in one of them.
 
 **A lender can now prove its own book.** A factor that finances receivables is itself financed, and showing
 its funder the book behind a drawdown means handing over the client list, the invoices and the amounts.
 `proveBorrowingBase(round, floor)` proves instead that four receivables pledged to this lender are together
-worth at least a public floor. Published: the floor and an unlinkable draw id. Not published: any amount,
-which receivables, which lender. Authorisation is structural — the circuit recomputes each note commitment
-from the prover's own secret, so only the lender of record for all four can prove it. This is also the answer
-to "doesn't this need every lender to join first?". It does not: the registry is useful to the first two
+worth at least a public floor. Published: the round, the floor, and a draw id unlinkable to the lender. Not
+published: any amount, which receivables, whose book. Only the lender of record for all four can prove it —
+the circuit recomputes each note commitment from the prover's own secret. This is also the answer to
+"doesn't this need every lender to join first?". It does not: the registry is useful to the first two
 lenders on it, and a borrowing-base proof is useful to a lender with no counterparties at all.
 
-**The registrar is now a 2-of-3 committee.** `rotateRegistrar` is gone. Two approvals admit a lender, a member
-cannot approve twice, an outsider cannot approve, and a rotation needs two approvals and voids every pending
-proposal. Approvals are unlinkable to a member, because membership is a Merkle path into an epoch-bound tree:
-the obvious alternative, a `Set` the circuit calls `member()` on, can only be checked on a disclosed value, so
-it would publish the approver's key on every admission — a public log of which registrar vouches for which
-lender. All three seats are deployer-held in this demo: it distributes the mechanism, not the custody.
+**We shipped that circuit with a hole in it, found it ourselves, and fixed it on the live contract.** It
+compared the four pool items' note commitments rather than their tags. Declining frees a tag but leaves the
+note, and the decliner keeps its opening — so one invoice pledged, declined and pledged again to the same
+lender became two notes for one receivable. A test proved **20,300,000 grosz against a book worth
+16,200,000**. Only that circuit changed, so only its verifier key did, and the contract maintenance
+authority replaced it in place rather than abandoning the address. Then the attack was re-run against the
+live registry: refused, before a proof is even built. Published in full as F70.
+
+**The registrar is now a 2-of-3 committee**, and so is the upgrade authority. Two approvals admit a lender;
+a member cannot approve twice; an outsider cannot approve. Approvals are unlinkable to a member, because
+membership is a Merkle path into an epoch-bound tree — the obvious alternative, a `Set` the circuit calls
+`member()` on, can only be checked on a disclosed value, so it would publish a log of which registrar
+vouches for which lender. Every seat on both committees is deployer-held here: this distributes the
+mechanism, not the custody.
 
 **The note opening now reaches the lender encrypted, on chain**, filed under the note commitment and found
-by trial decryption, with nothing saying who a delivery is for. The amount is attested by the tag authority
-and bound into the note commitment, and still never published — a borrowing-base proof is only as honest as
-the amounts it sums.
+by trial decryption, with nothing saying who a delivery is for.
 
-Nine circuits with proving keys. 272 tests (189 contract, 83 attester), including an allowlist over every
-value in each circuit's public transcript. CI runs three jobs: the unit and browser suites, a real `pledge`
-proof against a proof server, and a local-devnet deploy-and-run of the whole scenario. A wallet-connected
-desk submits a real pledge from the browser.
+Nine circuits. 272 tests, including an allowlist over every value in each circuit's public transcript. CI
+runs the unit and browser suites, a real `pledge` proof, and a devnet deploy-and-run. `verify:onchain`
+passes 24 checks against the live registry.
 
-Promised for Wave 2 and not delivered: an upgrade committee whose keys are in three pairs of hands (the
-2-of-3 itself landed on chain, but all three keys were generated on one machine, so in practice it is a
-1-of-1 until they are split); a KSeF adapter that has actually called KSeF (a read-only client
-exists but has only ever run against fixtures, so demo invoices stay synthetic); a racing-transaction test;
-and interviews with factors. Limitations are listed in full below.
+Not delivered: upgrade keys in three pairs of hands; a KSeF adapter that has actually called KSeF; a
+racing-transaction test; interviews with factors. Limitations in full below.
 
 This project is built on the Midnight Network.
 
