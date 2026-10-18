@@ -2,7 +2,7 @@
 // The product flows judges use. These must keep passing through every redesign checkpoint.
 import { expect, test } from '@playwright/test';
 import AxeBuilder from '@axe-core/playwright';
-import { brandRoutes, routes, watchPage } from './helpers.ts';
+import { brandRoutes, routes, settleAnimations, watchPage } from './helpers.ts';
 import deployment from '../../deployments/preprod.json' with { type: 'json' };
 
 test('walkthrough: pledge accepted, double pledge refused, lender accepts, release accepted', async ({ page }) => {
@@ -71,9 +71,16 @@ for (const [name, path] of Object.entries({ ...routes, ...brandRoutes })) {
   test(`accessibility: ${name} has no axe violations`, async ({ page }) => {
     await page.goto(path);
     await expect(page.getByRole('heading', { level: 1 })).toBeVisible({ timeout: 60_000 });
-    await page.waitForTimeout(500);
+    await settleAnimations(page);
     const results = await new AxeBuilder({ page }).analyze();
-    expect(results.violations.map((v) => `${v.id}: ${v.nodes.length}`)).toEqual([]);
+    // One entry per offending element, naming the selector and axe's own measurement. The previous
+    // form reported only `${v.id}: ${v.nodes.length}`, so a failure said "color-contrast: 1" and
+    // nothing about which element or by how much — the detail is not in the trace either, because
+    // this map discards it before Playwright records the assertion.
+    const violations = results.violations.flatMap((v) =>
+      v.nodes.map((n) => `${v.id} at ${n.target.join(' ')} — ${(n.failureSummary ?? '').split('\n').pop()?.trim()}`),
+    );
+    expect(violations).toEqual([]);
   });
 }
 
@@ -87,7 +94,12 @@ test('landing: thesis, calls to action and real Preprod proof', async ({ page })
   // the deployment record rather than pinned, because the scenario gains refusals as the contract
   // gains checks: this went from one to three when the registrar committee and the borrowing base
   // landed, and a fixed number would just break again next time.
-  const refused = deployment.events.filter((e) => !('txHash' in e) || !e.txHash).length;
+  //
+  // A refusal has no txId, because no transaction was ever built. The earlier test counted events
+  // with no *explorer hash*, which let the page badge three non-refusals — two `note` annotations and
+  // the committee install, which succeeded on chain without its hash being captured — and asserted
+  // that wrong number back, so the suite agreed with the bug instead of catching it.
+  const refused = deployment.events.filter((e) => e.circuit !== 'note' && !('txId' in e)).length;
   expect(refused, 'the recorded scenario has no refusals to show').toBeGreaterThan(0);
   await expect(page.getByText('refused before proving')).toHaveCount(refused);
   await expect(page.getByText('refused before proving').first()).toBeVisible();

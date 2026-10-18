@@ -49,7 +49,10 @@ function useReveal() {
 }
 
 export function Landing() {
-  const txs = registry.events.filter((e) => e.txHash);
+  // Every recorded step that reached the chain, counted by txId or explorer hash rather than by hash
+  // alone: two maintenance updates landed without their hash being captured, and counting only hashes
+  // understated the work done on Preprod. All 28 are distinct, and the +1 is the deploy itself.
+  const txs = registry.events.filter((e) => e.txId || e.txHash);
   const root = useReveal();
   return (
     <div ref={root} className="l-root">
@@ -79,8 +82,8 @@ export function Landing() {
               </a>
             </div>
             <p className="l-proof">
-              <span className="l-proof-dot" aria-hidden /> Registry v2 deployed in block {registry.deployBlock.toLocaleString('en-US')} ·{' '}
-              {txs.length + 1} Preprod transactions
+              <span className="l-proof-dot" aria-hidden /> Registry {registry.version} deployed in block{' '}
+              {registry.deployBlock.toLocaleString('en-US')} · {txs.length + 1} Preprod transactions
             </p>
           </div>
           <div className="l-hero-stage" aria-hidden="true">
@@ -177,22 +180,34 @@ export function Landing() {
               {shortHash(registry.deployTxHash)}
             </a>
           </li>
-          {registry.events.map((e, i) => (
-            <li key={i} className={e.txHash ? '' : 'l-ledger-refused'}>
-              <span className="l-margin">{e.blockHeight ?? '—'}</span>
-              <span className="l-ledger-label">
-                {e.label}
-                {!e.txHash && <span className="badge l-refused">refused before proving</span>}
-              </span>
-              {e.txHash ? (
-                <a className="mono" href={`${EXPLORER}/transactions/${e.txHash}`}>
-                  {shortHash(e.txHash)}
-                </a>
-              ) : (
-                <span className="mono muted">no transaction</span>
-              )}
-            </li>
-          ))}
+          {registry.events.map((e, i) => {
+            // A refusal is a step the circuit rejected, so no transaction was ever built and there is
+            // no txId. Keying the badge off a missing explorer hash instead libelled three records
+            // that are not refusals: the two `note` annotations, which state something true about
+            // the deployment rather than a step, and the committee install, which succeeded on chain
+            // but whose hash was never captured. Live.tsx already drew this line; the landing did not.
+            const note = e.circuit === 'note';
+            const refused = !note && !e.txId;
+            return (
+              <li key={i} className={note ? 'l-ledger-note' : refused ? 'l-ledger-refused' : ''}>
+                <span className="l-margin">{e.blockHeight ?? '—'}</span>
+                <span className="l-ledger-label">
+                  {e.label}
+                  {note && <span className="badge l-note">note</span>}
+                  {refused && <span className="badge l-refused">refused before proving</span>}
+                </span>
+                {e.txHash ? (
+                  <a className="mono" href={`${EXPLORER}/transactions/${e.txHash}`}>
+                    {shortHash(e.txHash)}
+                  </a>
+                ) : e.txId ? (
+                  <span className="mono muted">tx id {shortHash(e.txId)}</span>
+                ) : (
+                  <span className="mono muted">no transaction</span>
+                )}
+              </li>
+            );
+          })}
         </ol>
       </section>
 

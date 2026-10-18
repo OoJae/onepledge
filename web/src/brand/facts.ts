@@ -13,6 +13,10 @@ export const EXPLORER = 'https://preprod.midnightexplorer.com';
 export interface ChainEvent {
   label: string;
   circuit: string;
+  /** Present once the node accepted the transaction. A step the circuit refused never got one, so
+   *  this — not the explorer hash — is what distinguishes a refusal: two recorded maintenance updates
+   *  landed on chain without their explorer hash being captured. */
+  txId?: string;
   txHash?: string;
   blockHeight?: number;
   outcome: string;

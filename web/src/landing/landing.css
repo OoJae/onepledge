@@ -398,6 +398,13 @@
   border-color: var(--wax);
   color: var(--ink);
 }
+/* A note is not an outcome, so it takes none of the wax the refusals own: outlined and dim, it reads
+   as an annotation on the row rather than a verdict about it. */
+.badge.l-note {
+  background: transparent;
+  border-color: var(--rule);
+  color: var(--paper-dim);
+}
 @media (max-width: 640px) {
   .l-ledger li {
     grid-template-columns: 70px minmax(0, 1fr);
