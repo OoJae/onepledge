@@ -18,8 +18,7 @@ import {
   writeDeployment,
 } from './providers.js';
 import * as Rx from 'rxjs';
-import { inspect } from 'node:util';
-import { balances, registerNightForDust, startWallet, syncSummary, walletSeed } from './wallet.js';
+import { balances, registerNightForDust, startWallet, syncSummary, walletSeed, withDustRetry } from './wallet.js';
 
 const network = selectNetwork();
 const log = (m: string) => console.log(`[${new Date().toISOString()}] ${m}`);
@@ -62,45 +61,19 @@ log(`Registrar committee (2 of 3): ${committeeHex.map((k) => k.slice(0, 12)).joi
 
 log('Deploying registry (proof generated on the local proof server)...');
 
-// A non-zero DUST balance is not the same as enough DUST to balance a transaction. The nightly
-// devnet job proved it: the same commit deployed on 17 October and failed on 18 October with
-// `could not balance dust`, and all three of those runs — both CI runs and a local reproduction —
-// reported the identical wallet state, 128 dust outputs and DUST=1250000000000000000000000.
-//
-// What differed was block height, not elapsed time. The failing run balanced at best block #2; the
-// two that succeeded were at blocks 4 and 5. `docker compose --wait` gates only on block #1
-// existing, so how far the chain has moved by the time balancing starts depends on how quickly the
-// wallet gets through startup, which is why this job failed intermittently rather than always.
-//
-// Retrying is safe without a ledger probe, unlike the scenario's submit(): balancing fails before a
-// transaction is built, so nothing can have reached the chain on the attempt that threw.
-const deployOnce = () =>
-  deployContract(providers, {
-    compiledContract: registryContract,
-    privateStateId: 'registrar',
-    initialPrivateState: { secretKey: parties.registrar },
-    args: [authority.pk, BigInt(WINDOW_START), BigInt(WINDOW_END), committee],
-  } as never);
-
-const deployed = await (async () => {
-  for (let attempt = 1; ; attempt++) {
-    try {
-      return await deployOnce();
-    } catch (e) {
-      const text = inspect(e, { depth: 12 });
-      if (!/InsufficientFunds|could not balance dust/.test(text) || attempt >= 8) throw e;
-      const have = balances(await Rx.firstValueFrom(ctx.wallet.state())).dust;
-      log(`Could not balance dust (attempt ${attempt}); DUST=${have}. Waiting for blocks...`);
-      // Waiting for the reported balance to climb would wait forever. Measured on a local devnet,
-      // reproducing the CI failure at best block #2: the figure above stayed at exactly
-      // 1250000000000000000000000 across the whole retry and the deploy still went through once
-      // blocks had passed. So the number is a registered capacity, not spendable dust, which is also
-      // why the zero check above cannot catch this. Blocks are what make dust spendable, and on that
-      // devnet it took until roughly block 4, about 12 seconds at a 6-second block time.
-      await new Promise((r) => setTimeout(r, 15_000));
-    }
-  }
-})();
+// The DUST balance logged above is not a promise that a transaction can be balanced: on a chain that
+// has just started it reads full while the ledger still refuses the fee, which is what broke the
+// nightly devnet job. withDustRetry carries the measurements.
+const deployed = await withDustRetry(
+  () =>
+    deployContract(providers, {
+      compiledContract: registryContract,
+      privateStateId: 'registrar',
+      initialPrivateState: { secretKey: parties.registrar },
+      args: [authority.pk, BigInt(WINDOW_START), BigInt(WINDOW_END), committee],
+    } as never),
+  log,
+);
 
 const pub = (deployed as { deployTxData: { public: { contractAddress: string; txId: string; txHash: string; blockHeight: number } } })
   .deployTxData.public;

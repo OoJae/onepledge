@@ -6,6 +6,7 @@
 import fs from 'node:fs';
 import path from 'node:path';
 import { Buffer } from 'node:buffer';
+import { inspect } from 'node:util';
 import * as Rx from 'rxjs';
 import { WebSocket } from 'ws';
 import * as bip39 from '@scure/bip39';
@@ -190,6 +191,38 @@ export const syncSummary = (state: Awaited<ReturnType<WalletFacade['waitForSynce
     `shielded ${p(state.shielded)} | dust ${p(state.dust)} | ` +
     `unshielded ${u.appliedId}/${u.highestTransactionId}${u.isStrictlyComplete() ? ' done' : ''} | synced=${state.isSynced}`
   );
+};
+
+/** Runs an operation that submits a transaction, retrying while the wallet cannot balance its dust.
+ *
+ *  The nightly devnet job failed with `could not balance dust` while reporting
+ *  DUST=1250000000000000000000000, and the same commit had deployed fine the day before. Reproduced
+ *  on a local devnet: all three runs reported the identical wallet state, and what differed was
+ *  block height. The failing run balanced at best block #2; the two that succeeded were at blocks 4
+ *  and 5. `docker compose --wait` gates only on block #1 existing, so how far the chain has moved by
+ *  the time balancing starts depends on how quickly the wallet gets through startup — which is why
+ *  this failed intermittently rather than always.
+ *
+ *  So a caller cannot pre-check its way out of this. `balances()` reads `dust.balance(new Date())`,
+ *  a figure derived from wall-clock time, while spendability is decided by the chain's own block
+ *  time; on a chain that has just started those disagree, and the balance looks full while the
+ *  ledger refuses it. That is why checking for a zero balance cannot catch this case, and why the
+ *  wait below is a plain delay rather than a wait for the balance to climb: during the reproduction
+ *  it never moved off that exact figure, and the deploy went through anyway once blocks had passed.
+ *
+ *  Retrying is safe without a ledger probe, unlike the scenario's submit(): balancing fails before a
+ *  transaction is built, so nothing can have reached the chain on the attempt that threw. Anything
+ *  that is not a dust-balancing failure is rethrown untouched. */
+export const withDustRetry = async <T>(run: () => Promise<T>, log: (message: string) => void, attempts = 8): Promise<T> => {
+  for (let attempt = 1; ; attempt++) {
+    try {
+      return await run();
+    } catch (e) {
+      if (attempt >= attempts || !/InsufficientFunds|could not balance dust/.test(inspect(e, { depth: 12 }))) throw e;
+      log(`Could not balance dust (attempt ${attempt} of ${attempts}); waiting 15s for the chain to move...`);
+      await new Promise((r) => setTimeout(r, 15_000));
+    }
+  }
 };
 
 /** Register any unregistered NIGHT UTXOs so the wallet generates DUST for fees. */

@@ -52,7 +52,7 @@ import {
   type Authority,
 } from './committee.js';
 import { registryContract, zkConfigPath, type PartyId, type RegistryProviders } from './providers.js';
-import { balances, registerNightForDust, startWallet, syncSummary, walletSeed, type WalletContext } from './wallet.js';
+import { balances, registerNightForDust, startWallet, syncSummary, walletSeed, withDustRetry, type WalletContext } from './wallet.js';
 
 const log = (m: string) => console.log(`[${new Date().toISOString()}] ${m}`);
 
@@ -229,12 +229,20 @@ try {
   const windowEnd = dayFromIso('2027-01-01');
 
   log('Deploying a throwaway registry to the devnet (proving on the shared proof server)...');
-  const deployed = await deployContract(providers, {
-    compiledContract: registryContract,
-    privateStateId: 'registrar',
-    initialPrivateState: { secretKey: registrarSecrets[0] },
-    args: [tagPk, BigInt(windowStart), BigInt(windowEnd), registrarCommittee],
-  } as never);
+  // This is the one operation here that races a young chain: the rehearsal runs against a devnet
+  // that was just started, where the DUST figure logged above reads full while the ledger still
+  // refuses the fee. The maintenance updates further down run minutes later against a chain that has
+  // moved on, so they are not exposed to it. See withDustRetry for the measurements.
+  const deployed = await withDustRetry(
+    () =>
+      deployContract(providers, {
+        compiledContract: registryContract,
+        privateStateId: 'registrar',
+        initialPrivateState: { secretKey: registrarSecrets[0] },
+        args: [tagPk, BigInt(windowStart), BigInt(windowEnd), registrarCommittee],
+      } as never),
+    log,
+  );
   const pub = (deployed as { deployTxData: { public: { contractAddress: string; txId: string; blockHeight: number } } })
     .deployTxData.public;
   const address = pub.contractAddress as ContractAddress;

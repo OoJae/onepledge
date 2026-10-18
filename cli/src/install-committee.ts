@@ -41,7 +41,7 @@ import {
   verifyUpdateSignatures,
 } from './committee.js';
 import { configureProviders, readDeployment } from './providers.js';
-import { balances, registerNightForDust, startWallet, syncSummary, walletSeed } from './wallet.js';
+import { balances, registerNightForDust, startWallet, syncSummary, walletSeed, withDustRetry } from './wallet.js';
 
 const log = (m: string) => console.log(`[${new Date().toISOString()}] ${m}`);
 // Annotated on the variable, not just the return position: that is what lets TypeScript narrow
@@ -326,7 +326,11 @@ try {
     );
   }
   log(`Submitting ReplaceAuthority: ${current.summary} -> ${THRESHOLD}-of-${COMMITTEE_SIZE}...`);
-  const tx = await submitUpdate(providers.providers, signed);
+  // The DUST figure logged during startup does not promise this can be balanced; see withDustRetry.
+  // Retrying is safe here for the same reason it is in deploy: a dust-balancing failure happens
+  // before a transaction exists, so the authority cannot have been replaced by the attempt that
+  // threw, and the counter check above re-reads live state on the way in.
+  const tx = await withDustRetry(() => submitUpdate(providers.providers, signed), log);
   log(`Finalized: tx ${tx.txId} status ${tx.status}`);
   if (tx.status !== 'SucceedEntirely') {
     throw new Error(`ReplaceAuthority did not succeed: ${tx.status}. The authority is unchanged; re-read it and retry.`);
