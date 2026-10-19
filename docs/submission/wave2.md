@@ -22,7 +22,7 @@ Privacy · DeFi · Market Infrastructure
 
 - Live demo: https://onepledge.vercel.app
 - GitHub (Wave 2 tag): https://github.com/OoJae/onepledge/tree/wave-2
-- Demo video: {{VIDEO_URL}}
+- Demo video: https://youtu.be/lszexMPlro8
 - Registry on Midnight Preprod: the deployment table in the README carries the contract address, every
   transaction and every block, generated from `deployments/preprod.json` rather than typed by hand —
   https://github.com/OoJae/onepledge/tree/wave-2#live-on-midnight-preprod
