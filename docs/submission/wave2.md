@@ -78,65 +78,64 @@ racing-transaction test; interviews with factors. Limitations in full below.
 
 This project is built on the Midnight Network.
 
-## Stated limitations
+## About (replaces the field wholesale — do not append)
 
-*For the "About" field, alongside the Wave 1 text. 3,888 characters. Cap 6,000.*
+*The Wave 1 About was 5,939 of 6,000 characters, so nothing could be added to it, and most of it
+had gone stale: four circuits, 176 tests, registry v2, and Wave 2's work still written as future.
+This replaces it, in the same six headings AKINDO uses. 5,914 characters; 5,967 if the form stores
+CRLF line endings. Cap 6,000.*
 
-Nothing here is hidden in a footnote; each item is also in the README and the threat model.
+## The problem it solves
 
-**Demo limitations — true of this deployment, not of the design.**
+Invoice financing assumes a supplier pledged each invoice once. The same invoice pledged to three lenders means three payouts against one receivable — one of the oldest frauds in trade finance. Lenders could catch it by pooling their books, but none will show a rival its clients or exposure. So they don't pool, and the fraud keeps working.
 
-- All three registrar seats are deployer-held. The 2-of-3 rule is enforced on chain and tested; the keys are
-  not in three different pairs of hands. The anonymity set for an approval is three.
-- The demo lenders' party secrets are minted into the demo bundle the browser fetches, on purpose, so a
-  visitor can act as a lender and watch the inbox decrypt. On a real deployment that would let anyone read
-  every delivery addressed to those lenders and decide on their pledges.
-- Demo invoices use synthetic KSeF-format numbers. The read-only KSeF 2.0 client that landed this wave has
-  never called the live test environment — only its anonymous challenge endpoint could run as written, and
-  metadata lookup needs a token this repo cannot sign — so its shapes are checked against hand-authored
-  fixtures and its behaviour against a real KSeF is unverified. It is not wired into the attestation flow.
-- The CLI demo runs every party from one machine, so its timing and network metadata link parties a real
-  deployment would not.
+The obvious blockchain fix — publish `hash(invoice number, supplier, amount, due date)` and reject repeats — fails twice, and [both failures are playable](https://onepledge.vercel.app/attacks):
 
-**Design limitations — true of OnePledge as it stands.**
+- **Spelling.** "FV 1/2026" and "FV1/2026" are the same invoice and different hashes, so the duplicate sails through.
+- **Lookup.** Anyone holding an invoice can hash it and learn whether a rival financed it, and when — a competitive-intelligence feed.
 
-- A single tag authority is trusted to tag each invoice once, attest the right amount, and keep its keys safe.
-  A stolen signing key forges attestations and inflates borrowing bases. Wave 3 replaces it with threshold
-  tags.
-- The authority attests that an invoice exists, not that it is honest. OnePledge stops double financing, not
-  fabricated invoices.
-- There is no decision deadline. The named lender decides whether a pledge stands, but nothing forces it to,
-  so an undecided pledge holds the receivable until the lender acts.
-- A borrowing-base draw cannot require that the pooled notes were accepted, or that they were not declined or
-  released. All three live in `Set`s, and a `Set` can only be checked on a disclosed value, so proving
-  anything about them would publish the decision or release nullifier — tying the draw back to the accepts
-  behind it and letting an observer group one lender's book. This is a documented limitation of the privacy
-  trade, taken deliberately: a funder relying on a draw relies on the lender not counting receivables it
-  refused or has already been paid for.
-- The pool is fixed at four. A depth-16 Merkle path plus a note recompute costs about 4.9 MB of prover key per
-  receivable, and `proveBorrowingBase` is already 19.5 MB of a 93 MB bundle. Larger books run a draw per round
-  over a rolling four. Raising the number is a recompile, not a redesign, but it is paid for in key size and
-  proving time.
-- A delivery is an opaque byte string the circuit cannot constrain, so a borrower can post garbage. The lender
-  then decrypts nothing and declines, which is what the void path is for.
-- An accepted tag is permanent. A released pledge does not free the receivable; only a declined one does.
-- Lenders cannot be retired: the admitted-lender tree is append-only (1,024 entries; notes 65,536). A duplicate
-  admission is refused.
-- The registrar tree holds 16 leaves and each committee spends three, so the committee can be rotated four
-  times and the fifth rotation fails. Raising the depth is a recompile and a new deployment.
-- Every membership proof discloses the historic root it used, and a stale root narrows timing.
-- The Midnight maintenance authority, which can replace verifier keys, is now 2-of-3 on chain, but all three
-  keys are deployer-held and sit in one file. It is a different thing from the registrar committee, and the
-  same caveat applies to both: the mechanism is distributed, the custody is not.
-- Wave 2's new circuits were reviewed adversarially, which is how F70 was found and fixed, but not by the
-  same 88-finding sweep Wave 1 got and not by anyone outside the project. External review is Wave 3.
-- There is still no racing-transaction test, and no test of the CLI's own code paths.
+OnePledge closes both. Poland's KSeF gives every invoice one canonical number; a tag authority turns it into a keyed tag (HMAC under its secret), so the set cannot be searched by guessing. The borrower proves in zero knowledge that a valid, unexpired attestation exists and its tag has never been pledged.
 
-## What's next (Wave 3)
+A rival handed the tag learns one fact: already pledged. **This is why it works with two lenders — no consortium has to form first.**
 
-Verifiable threshold tags, so no single party can compute or sign a tag; registrar seats in three different
-pairs of hands and a maintenance committee; a decision deadline so an undecided pledge cannot hold a
-receivable indefinitely; pledge assignment between lenders, so a release can hand a receivable on; the KSeF
-client actually talking to the test environment, with correction mapping; a racing-transaction test; a
-reusable uniqueness module for registries with guessable IDs; and an external review covering Wave 2's
-circuits.
+## Challenges I ran into
+
+**We shipped a soundness bug and fixed it on the live contract.** `proveBorrowingBase` compared the four pool items' note commitments rather than their tags. Declining frees a tag but leaves the note, and the decliner keeps its opening — so one invoice pledged, declined and pledged again to the same lender became two notes for one receivable. A test proved **20,300,000 grosz against a book worth 16,200,000**. Our own adversarial review found it. Only that circuit changed, so only its verifier key did, and the maintenance authority replaced it in place rather than abandoning the address. The attack was then re-run against the live registry and refused. Published in full as F70.
+
+**Anonymous approvals force a Merkle path, not a Set.** A 2-of-3 registrar is easy; making an approval unlinkable to a member is not. Every ledger key a Compact circuit touches must be disclosed, so `Set.member()` would publish which registrar vouches for which lender. Membership is a Merkle path into an epoch-bound tree, so a rotation retires the old committee from an append-only tree.
+
+**midnight-js can only sign 1-of-1.** It hardcodes one signature at index 0, so once a 2-of-3 authority is installed it can no longer authorise anything. The multi-signature assembler had to ship in the same change, or the upgrade path would have been bricked.
+
+**Reading the Ministry's own KSeF spec, we found one invoice has two legal spellings** — the same characters with or without an inner dash, kept for KSeF 1.0 compatibility; their OpenAPI contract and their own SDK disagree. We had been rejecting the second outright. Both now resolve to one tag — exactly the gap this project exists to close.
+
+## Technologies I used
+
+- **Midnight** — Compact 0.31.1 (the version Preprod runs), midnight-js, proof server, Blockfrost indexer.
+- **TypeScript** throughout: witnesses, attester, CLI, web app.
+- **ZK design** — in-circuit Jubjub Schnorr, HMAC keyed tags, domain-separated role keys, a `Set` for tags, `HistoricMerkleTree` for notes and registrars.
+- **Web** — React, Vite, compiled circuits in-browser over WebAssembly, a strict CSP.
+- **Testing** — 272 tests, a privacy allowlist over every published value, and CI that runs the browser suite, a real proof, and a devnet deploy-and-run.
+
+## How we built it
+
+Nine circuits: `approveAdmit`, `executeAdmit`, `approveRotate`, `executeRotate`, `pledge`, `release`, `acceptPledge`, `declinePledge`, `proveBorrowingBase`.
+
+Wave 2 answered the three things Wave 1 got wrong. **The lender decides** — accept, or decline and free the receivable to be financed elsewhere, which the registry allows. **Two of three registrars must agree** to admit a lender, and the chain records that two agreed, not which two. **The invoice stopped travelling by email**: the opening is encrypted to the lender and found by trial decryption, with nothing on the ledger saying who a delivery is for.
+
+And a lender can prove its own book: `proveBorrowingBase` proves four receivables pledged to it are together worth at least a public floor. The chain learns the floor. Not one amount, not which invoices, not whose book.
+
+Live on Preprod: registry v4 `ce3030dd…0c8e71` at block 2,992,668, where `verify:onchain` passes 24 checks, including that each verifier key equals the committed file.
+
+## What we learned
+
+- **Attack your own build, and publish what you find.** F70 was ours, found by us, fixed on the live contract and written up in full. It is the strongest evidence here.
+- **Privacy constrains the data structure, not just the circuit.** "Prove membership without naming the member" rules out a Set.
+- **An honest limit is worth more than a claim.** Every seat on both committees is deployer-held, and we say so.
+
+## What's next for OnePledge
+
+**Wave 3:** threshold tags, so no single party can compute or sign one; registrar and upgrade seats in genuinely different hands; a decision deadline; the KSeF client actually talking to the test environment; and external review of Wave 2's circuits.
+
+**Today's limits, plainly.** One trusted tag authority — a stolen key forges attestations. All six committee seats, registrar and upgrade, are deployer-held: the mechanism is distributed, the custody is not. A draw cannot require that pooled notes were accepted or unreleased, because both live in `Set`s and proving it would publish the decision nullifier. The pool is fixed at four. There is no decision deadline. Demo invoices use synthetic KSeF numbers, and the KSeF client has never called the live test environment. Review of this wave's circuits was internal.
+
+This project is built on the Midnight Network.
