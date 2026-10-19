@@ -30,6 +30,7 @@ Privacy · DeFi · Market Infrastructure
   https://github.com/OoJae/onepledge/blob/wave-2/docs/security-review.md
 - Threat model, including what each of the nine circuits publishes:
   https://github.com/OoJae/onepledge/blob/wave-2/docs/threat-model.md
+- Deck (Wave 2): https://github.com/OoJae/onepledge/blob/wave-2/docs/OnePledge-Wave2-deck.pptx
 - Deck (Wave 1): https://github.com/OoJae/onepledge/blob/wave-2/docs/OnePledge-Wave1-deck.pdf
 
 ## Updates in this Wave

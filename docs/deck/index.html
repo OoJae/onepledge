@@ -280,7 +280,7 @@
 <!-- 9 -->
 <section class="slide">
   <p class="kicker">Live on Midnight Preprod · registry v4</p>
-  <h2 style="margin-bottom:18px">Nineteen checks say the live contract is this repository.</h2>
+  <h2 style="margin-bottom:18px">Twenty-four checks say the live contract is this repository.</h2>
   <div class="grid2" style="grid-template-columns:1.8fr 1fr;align-items:start">
     <div class="stack">
       <dl class="kv card sm" style="grid-template-columns:200px 1fr">
@@ -300,10 +300,10 @@
     </div>
     <div class="stack">
       <img class="shot cap" src="live-v4.png" alt="The Live page reading the v4 registry from the Preprod indexer: the contract address, the registrar threshold and the ledger counters" />
-      <p class="note" style="margin:0"><span class="mono">npm run verify:onchain</span> passes 19 checks
-      against the live contract, among them that each of the nine on-chain verifier keys equals the committed
-      <span class="mono">contract/src/managed/registry/keys/*.verifier</span>, and that each recorded
-      registrar-committee seat is present in the on-chain committee tree.</p>
+      <p class="note" style="margin:0"><span class="mono">npm run verify:onchain</span> passes 24 checks
+      against the live contract: the nine on-chain verifier keys equal the committed
+      <span class="mono">keys/*.verifier</span>, every registrar seat is in the on-chain tree, and the
+      upgrade authority is the recorded 2-of-3 and holds no seat beyond it.</p>
     </div>
   </div>
   <div class="footer"><span>No wallet, no transactions · registry v3 (488f6715…ba4900, block 2991455) is archived in deployments/archive/preprod-v3-488f6715.json</span><span>9</span></div>
@@ -326,8 +326,8 @@
       invoice. It proved <strong>20,300,000&nbsp;grosz against 16,200,000 held</strong>. The fix compares
       the tags.</p>
       <p>It was already deployed, and only that circuit's verifier key changed — so the maintenance
-      authority swapped it in place rather than abandoning the address. The attack was then re-run
-      against the live contract and refused, and a clean draw still proves.</p>
+      authority swapped it in place rather than abandoning the address. Re-run against the live
+      contract, the attack is refused and a clean draw still proves.</p>
     </div>
     <div class="card sm">
       <h3>Honest limits</h3>

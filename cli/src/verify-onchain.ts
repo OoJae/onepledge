@@ -136,5 +136,17 @@ if (failures.length) {
   console.error(`\n${failures.length} check(s) failed.`);
   process.exit(1);
 }
-console.log(`\nThe registry at ${record.contractAddress} on ${network.name} matches this repository, according to the indexer at ${network.indexer}.`);
+// The indexer URL carries the Blockfrost project id as a query parameter, so printing it whole puts
+// the API key in plaintext in whatever captures this run — a terminal scrollback, a CI log, or the
+// "proof it verifies" output someone pastes into a submission. Only the host is evidence of which
+// indexer was asked; the credential is not.
+const indexerHost = (() => {
+  try {
+    const u = new URL(network.indexer);
+    return `${u.origin}${u.pathname}`;
+  } catch {
+    return network.indexer.split('?')[0];
+  }
+})();
+console.log(`\nThe registry at ${record.contractAddress} on ${network.name} matches this repository, according to the indexer at ${indexerHost}.`);
 process.exit(0);
